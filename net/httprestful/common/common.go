@@ -13,6 +13,9 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"github.com/Ontology/core/transaction/payload"
+	"github.com/Ontology/smartcontract/pre_exec"
+	"github.com/Ontology/common/log"
 )
 
 var node Noder
@@ -460,6 +463,22 @@ func SendRawTransaction(cmd map[string]interface{}) map[string]interface{} {
 		resp["Error"] = Err.INVALID_TRANSACTION
 		return resp
 	}
+	if txn.TxType == tx.Invoke {
+		if preExec, ok := cmd["PreExec"].(string); ok && preExec == "1" {
+			log.Tracef("PreExec SMARTCODE")
+			if invokeCode,ok := txn.Payload.(*payload.InvokeCode);ok{
+				param := invokeCode.Code
+				param = append(param, 0x67)
+				param = append(param, invokeCode.CodeHash.ToArray()...)
+				resp["Result"], err = pre_exec.PreExec(param, &txn)
+				if err != nil {
+					resp["Error"] = Err.SMARTCODE_ERROR
+					return resp
+				}
+				return resp
+			}
+		}
+	}
 	var hash Uint256
 	hash = txn.Hash()
 	if errCode := VerifyAndSendTx(&txn); errCode != ErrNoError {
@@ -467,8 +486,8 @@ func SendRawTransaction(cmd map[string]interface{}) map[string]interface{} {
 		return resp
 	}
 	resp["Result"] = ToHexString(hash.ToArray())
-	//TODO 0xd1 -> tx.InvokeCode
-	if txn.TxType == 0xd1 {
+
+	if txn.TxType == tx.Invoke {
 		if userid, ok := cmd["Userid"].(string); ok && len(userid) > 0 {
 			resp["Userid"] = userid
 		}
