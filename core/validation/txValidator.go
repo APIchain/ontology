@@ -3,6 +3,8 @@ package validation
 import (
 	"errors"
 	"fmt"
+	"math"
+
 	"github.com/Ontology/common"
 	"github.com/Ontology/common/log"
 	"github.com/Ontology/core/asset"
@@ -12,7 +14,6 @@ import (
 	"github.com/Ontology/core/transaction/utxo"
 	"github.com/Ontology/crypto"
 	. "github.com/Ontology/errors"
-	"math"
 )
 
 // VerifyTransaction verifys received single transaction
@@ -218,7 +219,7 @@ func CheckTransactionBalance(Tx *tx.Transaction) error {
 	}
 	networkfee, err := Tx.GetNetworkFee()
 	if err != nil {
-		return errors.New(fmt.Sprintf("[CheckTransactionBalance] GetNetworkFee failed. with err=",err))
+		return errors.New(fmt.Sprintf("[CheckTransactionBalance] GetNetworkFee failed. with err=", err))
 	}
 	results, err := Tx.GetTransactionResults()
 	if err != nil {
@@ -231,7 +232,7 @@ func CheckTransactionBalance(Tx *tx.Transaction) error {
 				if Tx.GetSysFee().GetData() != Tx.SystemFee.GetData() {
 					return errors.New(fmt.Sprintf("AssetID %x in Transfer transactions %x ,SystemFee/NetworkFee Not equal.", k, Tx.Hash()))
 				}
-				if v.GetData() != Tx.GetSysFee().GetData()+ networkfee.GetData() {
+				if v.GetData() != Tx.GetSysFee().GetData()+networkfee.GetData() {
 					return errors.New(fmt.Sprintf("AssetID %x in Transfer transactions %x ,SystemFee/NetworkFee Not equal.", k, Tx.Hash()))
 				}
 			}
@@ -244,7 +245,7 @@ func CheckTransactionBalance(Tx *tx.Transaction) error {
 				if Tx.GetSysFee().GetData() != Tx.SystemFee.GetData() {
 					return errors.New(fmt.Sprintf("AssetID %x in Transfer transactions %x ,SystemFee/NetworkFee Not equal.", k, Tx.Hash()))
 				}
-				if v.GetData() != Tx.GetSysFee().GetData() + networkfee.GetData() {
+				if v.GetData() != Tx.GetSysFee().GetData()+networkfee.GetData() {
 					log.Debug(fmt.Sprintf("AssetID %x in Transfer transactions %x ,SystemFee Not equal.", k, Tx.Hash()))
 					return errors.New(fmt.Sprintf("AssetID %x in Transfer transactions %x ,SystemFee Not equal.", k, Tx.Hash()))
 				}
@@ -336,7 +337,7 @@ func CheckTransactionPayload(Tx *tx.Transaction) error {
 
 func isDoubleClaim(claims []*utxo.UTXOTxInput) bool {
 	for i := 0; i < len(claims); i++ {
-		for j := 0; i < i; j++ {
+		for j := 0; j < i; j++ {
 			if claims[i] == claims[j] {
 				return true
 			}
