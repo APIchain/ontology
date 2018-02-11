@@ -4,6 +4,7 @@ import (
 	"testing"
 	"bytes"
 	"github.com/Ontology/common"
+	"fmt"
 )
 
 func newEmpty() *Trie {
@@ -14,15 +15,18 @@ func newEmpty() *Trie {
 
 func TestNode(t *testing.T) {
 	trie := newEmpty()
-
+	fmt.Println("after new trie")
 	trie.TryUpdate([]byte("123456"), []byte("asdfasdfasdfasdfasdfasdfasdfasdf"))
 	//trie.TryUpdate([]byte("12366"), []byte("wqeqweqweqweqweqwewerwerwerwerwerwerwerwerwerwerwerwerwerwqeqweqweqweqweqwewerwerwerwerwerwerwerwerwerwerwerwerwerwqeqweqweqweqweqwewerwerwerwerwerwerwerwerwerwerwerwerwerwqeqweqweqweqweqwewerwerwerwerwerwerwerwerwerwerwerwerwerwqeqweqweqweqweqwewerwerwerwerwerwerwerwerwerwerwerwerwerwqeqweqweqweqweqwewerwerwerwerwerwerwerwerwerwerwerwerwerwqeqweqweqweqweqwewerwerwerwerwerwerwerwerwerwerwerwerwer"))
 	//trie.TryUpdate([]byte("1234"), []byte("asdfasdfasdfasdfasdfasdfasdfasdf"))
-
+	fmt.Println("after tryupdate trie")
 	root, _ := trie.Commit()
+	fmt.Println("after commit trie")
 
+	t.Log("trie key:", trie.rootHash)
+	t.Log("trie key:", trie.Hash())
 	trie, _ = New(root, trie.db)
-
+	t.Log("trie key:", trie.rootHash)
 	v, err := trie.TryGet([]byte("1234"))
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
@@ -49,13 +53,24 @@ func TestNode(t *testing.T) {
 	if err != nil {
 		t.Errorf("Wrong error: %v", err)
 	}
-	t.Log("trie key:", root)
-	trie.db.ViewDB()
+	t.Log("key 123456 value:", string(v))
 
 	trie, _ = New(root, trie.db)
+	v, err = trie.TryGet([]byte("120099"))
+	if err != nil {
+		t.Errorf("Wrong error: %v", err)
+	}
+	t.Log("2-key 120099 value:", string(v))
 
-	trie.TryUpdate([]byte("12366"), []byte("wqeqweqweqweqweqwewerwerwerwerwerwerwerwerwerwerwerwerwerwqeqweqweqweqweqwewerwerwerwerwerwerwerwerwerwerwerwerwerwqeqweqweqweqweqwewerwerwerwerwerwerwerwerwerwerwerwerwerwqeqweqweqweqweqwewerwerwerwerwerwerwerwerwerwerwerwerwerwqeqweqweqweqweqwewerwerwerwerwerwerwerwerwerwerwerwerwerwqeqweqweqweqweqwewerwerwerwerwerwerwerwerwerwerwerwerwerwqeqweqweqweqweqwewerwerwerwerwerwerwerwerwerwerwerwerwer"))
+	trie.TryUpdate([]byte("12366"), []byte("wqeqweqweqweqweqwewerwerwerwerwerwerwerwerwerwerwerwerwer"))
+
 	root, _ = trie.Commit()
+	//trie, _ = New(root, trie.db)
+	v, err = trie.TryGet([]byte("12366"))
+	if err != nil {
+		t.Errorf("Wrong error: %v", err)
+	}
+	t.Log("key 12366 value:", string(v))
 
 	t.Log("trie key:", root)
 
@@ -72,7 +87,7 @@ func TestGet(t *testing.T) {
 		if !bytes.Equal(res, []byte("puppy")) {
 			t.Errorf("expected puppy got %x", res)
 		}
-
+		t.Log("loop: ",i,string(res))
 		unknown := getString(trie, "unknown")
 		if unknown != nil {
 			t.Errorf("expected nil got %x", unknown)
@@ -129,10 +144,10 @@ func TestReplication(t *testing.T) {
 		{"horse", "stallion"},
 		{"shaman", "horse"},
 		{"doge", "coin"},
-		{"ether", ""},
+		//{"ether", ""},
 		{"dog", "puppy"},
 		{"somethingveryoddindeedthis is", "myothernodedata"},
-		{"shaman", ""},
+		//{"shaman", ""},
 	}
 	for _, val := range vals2 {
 		updateString(trie2, val.k, val.v)
@@ -168,6 +183,7 @@ type countingDB struct {
 }
 
 func (db *countingDB) Get(key []byte) ([]byte, error) {
+	fmt.Println("call conut ++")
 	db.gets[string(key)]++
 	return db.Database.Get(key)
 }
@@ -182,8 +198,7 @@ func TestCacheUnload(t *testing.T) {
 	root, _ := trie.Commit()
 
 	// Commit the trie repeatedly and access key1.
-	// The branch containing it is loaded from DB exactly two times:
-	// in the 0th and 6th iteration.
+	// The branch containing it is loaded from DB exactly 1 time because of cache
 	db := &countingDB{Database: trie.db, gets: make(map[string]int)}
 	trie, _ = New(root, db)
 	//trie.SetCacheLimit(5)
@@ -192,10 +207,10 @@ func TestCacheUnload(t *testing.T) {
 		trie.Commit()
 	}
 
-	// Check that it got loaded two times.
+	// Check that it got loaded 1 times.
 	for dbkey, count := range db.gets {
-		if count != 2 {
-			t.Errorf("db key %x loaded %d times, want %d times", []byte(dbkey), count, 2)
+		if count != 1 {
+			t.Errorf("db key %x loaded %d times, want %d times", dbkey, count, 1)
 		}
 	}
 }

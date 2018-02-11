@@ -256,7 +256,7 @@ func (t *Trie) delete(n node, prefix, key []byte) (node, error) {
 
 func (t *Trie) Commit() (common.Uint256, error) {
 	if t.db == nil {
-		panic("Commit data to trie whit nil database")
+		panic("Commit data to trie with nil database")
 	}
 	return t.commitTo(t.db)
 }
