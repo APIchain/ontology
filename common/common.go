@@ -129,7 +129,8 @@ func ToByteArray(source []uint16) []byte {
 func SliceRemove(slice []uint32, h uint32) []uint32 {
 	for i, v := range slice {
 		if v == h {
-			return append(slice[:i], slice[i+1:]...)
+			//use slice[:i:i] to ensure slice not change after SliceRemove func
+			return append(slice[:i:i], slice[i+1:]...)
 		}
 	}
 	return slice
