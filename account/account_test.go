@@ -1,26 +1,55 @@
 package account
 
 import (
-	"fmt"
 	"github.com/Ontology/crypto"
-	"os"
-	"path"
+
 	"testing"
+	"github.com/Ontology/common/log"
 )
 
-func TestClient(t *testing.T) {
-	t.Log("created client start!")
-	crypto.SetAlg(crypto.P256R1)
-	dir := "./data/"
-	err := os.MkdirAll(dir, 0777)
-	if err != nil {
-		t.Log("create dir ", dir, " error: ", err)
-	} else {
-		t.Log("create dir ", dir, " success!")
+func init()  {
+	log.Init(log.Path, log.Stdout)
+	crypto.SetAlg("P256R1")
+}
+
+
+func TestNewAccount(t *testing.T) {
+	t.Log("NewAccount start!")
+	acct,err:=NewAccount()
+	if err != nil{
+		t.Error("NewAccount error:",err.Error())
 	}
-	for i := 0; i < 10000; i++ {
-		p := path.Join(dir, fmt.Sprintf("wallet%d.txt", i))
-		fmt.Println("client path", p)
-		CreateClient(p, []byte(DefaultPin))
+	if acct == nil{
+		t.Error("NewAccount nil!")
 	}
+	t.Logf("acct is %v",acct)
+}
+
+func TestNewAccountWithPrivatekey(t *testing.T){
+	t.Log("TestNewAccountWithPrivatekey start!")
+	wrongKey1 := []byte("")
+
+	_,err := NewAccountWithPrivatekey(wrongKey1)
+	if err == nil{
+		t.Error("NewAccountWithPrivatekey should return Error when input is " ,string(wrongKey1))
+	}
+
+	key32 := []byte("12345678901234567890123456789012")
+	_,err = NewAccountWithPrivatekey(key32)
+	if err != nil{
+		t.Error("NewAccountWithPrivatekey return error:",err.Error())
+	}
+
+	key96 := []byte("123456789012345678901234567890121234567890123456789012345678901212345678901234567890123456789012")
+	_,err = NewAccountWithPrivatekey(key96)
+	if err != nil{
+		t.Error("NewAccountWithPrivatekey return error:",err.Error())
+	}
+
+	key104 := []byte("12345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234")
+	_,err = NewAccountWithPrivatekey(key104)
+	if err != nil{
+		t.Error("NewAccountWithPrivatekey return error:",err.Error())
+	}
+	t.Log("Test succeed!")
 }
