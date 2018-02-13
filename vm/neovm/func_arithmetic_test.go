@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	engine = NewExecutionEngine(nil, nil, nil, nil, 0)
+	engine = NewExecutionEngine(nil, nil, nil, nil, )
 )
 
 func TestOpBigInt(t *testing.T) {
@@ -55,7 +55,7 @@ func TestOpBigInt(t *testing.T) {
 }
 
 func TestOpNot(t *testing.T) {
-	engine := NewExecutionEngine(nil, nil, nil, nil, 0)
+	engine := NewExecutionEngine(nil, nil, nil, nil, )
 	state, err := opNot(engine)
 	t.Log("state:", state, "err:", err)
 
