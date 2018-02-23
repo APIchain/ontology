@@ -114,7 +114,7 @@ func PushSmartCodeEvent(v interface{}) {
 				msg := NotifyEventArgsInfo{
 					Container:   ToHexString(object.Container.ToArray()),
 					CodeHash:    ToHexString(object.CodeHash.ToArray()),
-					State:       sc.ConvertTypes(object.State),
+					State:       sc.ConvertTypes(object.States),
 					BlockHeight: ledger.DefaultLedger.Store.GetHeight() + 1,
 				}
 				PushEvent(rs["TxHash"].(string), rs["Error"].(int64), rs["Action"].(string), msg)

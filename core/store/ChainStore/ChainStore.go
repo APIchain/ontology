@@ -199,7 +199,7 @@ func (bd *ChainStore) InitLedgerStoreWithGenesisBlock(genesisBlock *Block, defau
 			rk := bytes.NewReader(iter.Key())
 			// read prefix
 			_, _ = serialization.ReadBytes(rk, 1)
-			startNum, err := serialization.ReadUint32(rk)
+			pstartNum, err := serialization.ReadUint32(rk)
 			if err != nil {
 				return 0, err
 			}
@@ -674,6 +674,7 @@ func (bd *ChainStore) persist(b *Block) error {
 	}
 	bookKeeper := state.Value.(*states.BookKeeperState)
 	handleBookKeeper(stateStore, bookKeeper)
+	txids := new(states.EventTxState)
 	for _, t := range b.Transactions {
 		bd.SaveTransaction(t, b.Header.Height)
 		tx_id := t.Hash()
@@ -800,6 +801,11 @@ func (bd *ChainStore) persist(b *Block) error {
 			}
 			log.Error("result:", ret)
 			stateMachine.CloneCache.Commit()
+			if err := DefaultEventStore.SaveEventNotifyByTx(tx_id, stateMachine.Notifications); err != nil {
+				log.Error("[persist] SaveEventNotifyByTx error:", err)
+				return err
+			}
+			txids.Txids = append(txids.Txids, tx_id)
 			event.PushSmartCodeEvent(t.Hash(), 0, INVOKE_TRANSACTION, ret)
 		case tx.Vote:
 			vote := t.Payload.(*payload.Vote)
@@ -837,6 +843,17 @@ func (bd *ChainStore) persist(b *Block) error {
 	if err != nil {
 		return err
 	}
+	if len(txids.Txids) > 0 {
+		err = DefaultEventStore.SaveEventNotifyByBlock(b.Header.Height, txids)
+		if err != nil {
+			return err
+		}
+		err = DefaultEventStore.BatchCommit()
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 

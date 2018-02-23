@@ -17,6 +17,7 @@ import (
 	"github.com/Ontology/vm/neovm/types"
 	"math/big"
 	"strings"
+	. "github.com/Ontology/smartcontract/common"
 )
 
 var (
@@ -28,6 +29,7 @@ var (
 type StateReader struct {
 	serviceMap map[string]func(*vm.ExecutionEngine) (bool, error)
 	trigger    trigger.TriggerType
+	Notifications []*event.NotifyEventInfo
 }
 
 func NewStateReader(trigger trigger.TriggerType) *StateReader {
@@ -144,7 +146,9 @@ func (s *StateReader) RuntimeNotify(e *vm.ExecutionEngine) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	event.PushSmartCodeEvent(tran.Hash(), 0, Notify, event.NotifyEventArgs{tran.Hash(), hash, item})
+	txid := tran.Hash()
+	s.Notifications = append(s.Notifications, &event.NotifyEventInfo{Container: txid, CodeHash: hash, States: ConvertReturnTypes(item)})
+	event.PushSmartCodeEvent(tran.Hash(), 0, Notify, event.NotifyEventArgs{Container: txid, CodeHash: hash, States: item})
 	return true, nil
 }
 

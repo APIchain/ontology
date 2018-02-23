@@ -115,7 +115,11 @@ func main() {
 	}
 
 	log.Info("--Loading Event Store--")
-	//ChainStore.NewEventStore()
+	ChainStore.DefaultEventStore, err = ChainStore.NewEventStore()
+	if err != nil {
+		log.Fatal("open event notify store err:", err)
+		os.Exit(1)
+	}
 
 	go func() {
 		ticker := time.NewTicker(config.DEFAULTGENBLOCKTIME * time.Second)

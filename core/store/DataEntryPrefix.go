@@ -30,4 +30,7 @@ const (
 	SYS_CurrentStateRoot
 	SYS_BlockMerkleTree
 	SYS_MPTTrie
+
+	EVENT_Notify
+
 )
