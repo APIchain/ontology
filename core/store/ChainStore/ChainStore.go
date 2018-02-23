@@ -199,7 +199,7 @@ func (bd *ChainStore) InitLedgerStoreWithGenesisBlock(genesisBlock *Block, defau
 			rk := bytes.NewReader(iter.Key())
 			// read prefix
 			_, _ = serialization.ReadBytes(rk, 1)
-			pstartNum, err := serialization.ReadUint32(rk)
+			startNum, err := serialization.ReadUint32(rk)
 			if err != nil {
 				return 0, err
 			}
@@ -801,7 +801,7 @@ func (bd *ChainStore) persist(b *Block) error {
 			}
 			log.Error("result:", ret)
 			stateMachine.CloneCache.Commit()
-			if err := DefaultEventStore.SaveEventNotifyByTx(tx_id, stateMachine.Notifications); err != nil {
+			if err := DefaultEventStore.SaveEventNotifyInTx(tx_id, stateMachine.Notifications); err != nil {
 				log.Error("[persist] SaveEventNotifyByTx error:", err)
 				return err
 			}
@@ -844,7 +844,7 @@ func (bd *ChainStore) persist(b *Block) error {
 		return err
 	}
 	if len(txids.Txids) > 0 {
-		err = DefaultEventStore.SaveEventNotifyByBlock(b.Header.Height, txids)
+		err = DefaultEventStore.SaveEventNotifyInBlock(b.Header.Height, txids)
 		if err != nil {
 			return err
 		}

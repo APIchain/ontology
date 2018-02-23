@@ -17,9 +17,10 @@ const (
 var DefaultEventStore IEventStore
 
 type IEventStore interface {
-	SaveEventNotifyByTx(txid common.Uint256, notifies []*event.NotifyEventInfo) error
-	SaveEventNotifyByBlock(height uint32, txids *states.EventTxState) error
+	SaveEventNotifyInTx(txid common.Uint256, notifies []*event.NotifyEventInfo) error
+	SaveEventNotifyInBlock(height uint32, txids *states.EventTxState) error
 	GetEventNotifyByTx(txid common.Uint256) ([]*event.NotifyEventInfo, error)
+	GetEventNotifyTxIds(height uint32) (*states.EventTxState, error)
 	BatchCommit() error
 }
 
@@ -35,7 +36,7 @@ func NewEventStore() (IEventStore, error) {
 	return &EventStore{st}, nil
 }
 
-func (this *EventStore) SaveEventNotifyByTx(txid common.Uint256, notifies []*event.NotifyEventInfo) error {
+func (this *EventStore) SaveEventNotifyInTx(txid common.Uint256, notifies []*event.NotifyEventInfo) error {
 	result, err := json.Marshal(notifies)
 	if err != nil {
 		return err
@@ -55,7 +56,7 @@ func (this *EventStore) GetEventNotifyByTx(txid common.Uint256) ([]*event.Notify
 	return notifies, nil
 }
 
-func (this *EventStore) SaveEventNotifyByBlock(height uint32, txids *states.EventTxState) error {
+func (this *EventStore) SaveEventNotifyInBlock(height uint32, txids *states.EventTxState) error {
 	b := new(bytes.Buffer)
 	if err := txids.Serialize(b); err != nil {
 		return err
@@ -66,6 +67,22 @@ func (this *EventStore) SaveEventNotifyByBlock(height uint32, txids *states.Even
 		return err
 	}
 	return this.st.BatchPut(append([]byte{byte(EVENT_Notify)}, f.Bytes()...), b.Bytes())
+}
+
+func (this *EventStore) GetEventNotifyTxIds(height uint32) (*states.EventTxState, error) {
+	f := new(bytes.Buffer)
+	if err := serialization.WriteUint32(f, height); err != nil {
+		return nil, err
+	}
+	result, err := this.st.Get(append([]byte{byte(EVENT_Notify)}, f.Bytes()...))
+	if err != nil {
+		return nil, err
+	}
+	txids := new(states.EventTxState)
+	if err := txids.Deserialize(bytes.NewBuffer(result)); err != nil {
+		return nil, err
+	}
+	return txids, nil
 }
 
 func (this *EventStore) BatchCommit() error {
