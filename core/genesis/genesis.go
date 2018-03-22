@@ -20,9 +20,12 @@ package genesis
 
 import (
 	"errors"
+	"fmt"
 	"time"
+
 	"github.com/Ontology/common"
 	"github.com/Ontology/common/config"
+	vconfig "github.com/Ontology/consensus/vbft/config"
 	"github.com/Ontology/core/types"
 	"github.com/Ontology/core/utils"
 	"github.com/Ontology/crypto"
@@ -61,6 +64,12 @@ func GenesisBlockInit(defaultBookKeeper []*crypto.PubKey) (*types.Block, error) 
 	if err != nil {
 		return nil, errors.New("[Block],GenesisBlockInit err with GetBookKeeperAddress")
 	}
+
+	consensusPayload, err := vconfig.GenesisConsensusPayload()
+	if err != nil {
+		return nil, fmt.Errorf("consensus genesus init failed: %s", err)
+	}
+
 	//blockdata
 	genesisHeader := &types.Header{
 		Version:          BlockVersion,
@@ -69,6 +78,7 @@ func GenesisBlockInit(defaultBookKeeper []*crypto.PubKey) (*types.Block, error) 
 		Timestamp:        uint32(uint32(time.Date(2017, time.February, 23, 0, 0, 0, 0, time.UTC).Unix())),
 		Height:           uint32(0),
 		ConsensusData:    GenesisNonce,
+		ConsensusPayload: consensusPayload,
 		NextBookKeeper:   nextBookKeeper,
 
 		BookKeepers: nil,
@@ -105,7 +115,7 @@ func NewUtilityToken() *types.Transaction {
 func NewGoverningInit() *types.Transaction {
 	vmCode := vmtypes.VmCode{
 		VmType: vmtypes.NativeVM,
-		Code: []byte{14, 84, 111, 107, 101, 110, 46, 79, 110, 116, 46, 73, 110, 105, 116},
+		Code:   []byte{14, 84, 111, 107, 101, 110, 46, 79, 110, 116, 46, 73, 110, 105, 116},
 	}
 	tx := utils.NewInvokeTransaction(vmCode)
 	return tx

@@ -29,6 +29,7 @@
       "RegisterAsset": 10000,
       "IssueAsset": 10000
     },
-    "ConsensusType":"solo"
+    "ConsensusType":"solo",
+    "ConsensusConfigPath":"./consensus_config.json"
   }
 }
