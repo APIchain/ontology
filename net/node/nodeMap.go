@@ -201,6 +201,8 @@ func (node *node) IsUptoMinNodeCount() bool {
 	case "dbft":
 	case "solo":
 		minCount = config.SOLOMINNODENUM
+	case "vbft":
+		minCount = config.VBFTMINNODENUM
 	}
 	return int(node.GetNbrNodeCnt())+1 >= minCount
 }
