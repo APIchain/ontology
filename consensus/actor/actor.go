@@ -23,8 +23,10 @@ import (
 	"time"
 
 	"github.com/Ontology/core/types"
+	"github.com/Ontology/crypto"
 	ontErrors "github.com/Ontology/errors"
 	"github.com/Ontology/eventbus/actor"
+	netActor "github.com/Ontology/net/actor"
 	txpool "github.com/Ontology/txnpool/common"
 )
 
@@ -66,8 +68,15 @@ type P2PActor struct {
 	P2P *actor.PID
 }
 
-func (self *P2PActor) Xmit(msg interface{})  {
+func (self *P2PActor) Broadcast(msg interface{}) {
 	self.P2P.Tell(msg)
+}
+
+func (self *P2PActor) Transmit(target *crypto.PubKey, msg []byte) {
+	self.P2P.Tell(&netActor.TransmitConsensusMsgReq{
+		Target: target,
+		Msg:    msg,
+	})
 }
 
 type LedgerActor struct {

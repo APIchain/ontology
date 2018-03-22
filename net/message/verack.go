@@ -141,6 +141,7 @@ func (msg verACK) Handle(node Noder) error {
 	}
 
 	node.SetState(ESTABLISH)
+	NotifyPeerState(node.GetPubKey(), true)
 
 	if s == HANDSHAKE {
 		buf, _ := NewVerack(false)

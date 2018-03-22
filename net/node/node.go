@@ -256,6 +256,7 @@ func (n *node) NodeConsensusDisconnect(v interface{}) {
 func (n *node) NodeDisconnect(v interface{}) {
 	if node, ok := v.(*node); ok {
 		node.SetState(INACTIVITY)
+		NotifyPeerState(node.GetPubKey(), false)
 		conn := node.getConn()
 		conn.Close()
 	}

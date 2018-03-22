@@ -33,6 +33,22 @@ import (
 	. "github.com/Ontology/net/protocol"
 )
 
+type PeerStateUpdate struct {
+	PeerPubKey *crypto.PubKey
+	Connected  bool
+}
+
+func NotifyPeerState(peer *crypto.PubKey, connected bool) error {
+	log.Debug()
+	if actor.ConsensusPid != nil {
+		actor.ConsensusPid.Tell(&PeerStateUpdate{
+			PeerPubKey: peer,
+			Connected:  connected,
+		})
+	}
+	return nil
+}
+
 type ConsensusPayload struct {
 	Version         uint32
 	PrevHash        common.Uint256

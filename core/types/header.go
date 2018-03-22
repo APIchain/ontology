@@ -38,6 +38,7 @@ type Header struct {
 	Timestamp        uint32
 	Height           uint32
 	ConsensusData    uint64
+	ConsensusPayload []byte
 	NextBookKeeper   Address
 
 	//Program *program.Program
@@ -86,6 +87,7 @@ func (bd *Header) SerializeUnsigned(w io.Writer) error {
 	serialization.WriteUint32(w, bd.Timestamp)
 	serialization.WriteUint32(w, bd.Height)
 	serialization.WriteUint64(w, bd.ConsensusData)
+	serialization.WriteVarBytes(w, bd.ConsensusPayload)
 	bd.NextBookKeeper.Serialize(w)
 	return nil
 }
