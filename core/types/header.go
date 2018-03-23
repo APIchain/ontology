@@ -166,6 +166,9 @@ func (bd *Header) DeserializeUnsigned(r io.Reader) error {
 	//consensusData
 	bd.ConsensusData, _ = serialization.ReadUint64(r)
 
+
+
+	bd.ConsensusPayload, err = serialization.ReadVarBytes(r)
 	//NextBookKeeper
 	err = bd.NextBookKeeper.Deserialize(r)
 

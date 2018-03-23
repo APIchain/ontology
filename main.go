@@ -110,7 +110,6 @@ func main() {
 	}
 	ldgerActor := ldgactor.NewLedgerActor()
 	ledgerPID := ldgerActor.Start()
-
 	log.Info("3. Start the transaction pool server")
 	// Start the transaction pool server
 	txPoolServer := txnpool.StartTxnPoolServer()
@@ -147,8 +146,8 @@ func main() {
 	go restful.StartServer()
 
 	noder.SyncNodeHeight()
-	noder.WaitForPeersStart()
-	noder.WaitForSyncBlkFinish()
+	//noder.WaitForPeersStart()
+	//noder.WaitForSyncBlkFinish()
 	if protocol.SERVICENODENAME != config.Parameters.NodeType {
 		log.Info("5. Start Consensus Services")
 		pool := txPoolServer.GetPID(tc.TxPoolActor)
@@ -159,6 +158,8 @@ func main() {
 		hserver.SetConsensusPid(consensusService.GetPID())
 		go localrpc.StartLocalServer()
 	}
+	noder.WaitForPeersStart()
+	noder.WaitForSyncBlkFinish()
 
 	log.Info("--Start the RPC interface")
 	go jsonrpc.StartRPCServer()
