@@ -46,8 +46,6 @@ import (
 	"github.com/Ontology/events"
 	"sort"
 	"strings"
-	"github.com/Ontology/consensus/vbft/config"
-	"fmt"
 )
 
 const (
