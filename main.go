@@ -45,6 +45,9 @@ import (
 	"time"
 	"github.com/Ontology/events"
 	"sort"
+	"strings"
+	"github.com/Ontology/consensus/vbft/config"
+	"fmt"
 )
 
 const (
@@ -93,7 +96,6 @@ func main() {
 		log.Fatalf("GetBookKeepers error:%s", err)
 		os.Exit(1)
 	}
-
 	//Init event hub
 	events.Init()
 
@@ -146,8 +148,11 @@ func main() {
 	go restful.StartServer()
 
 	noder.SyncNodeHeight()
-	//noder.WaitForPeersStart()
-	//noder.WaitForSyncBlkFinish()
+	consensusType := strings.ToLower(config.Parameters.ConsensusType)
+	if consensusType != "vbft" {
+		noder.WaitForPeersStart()
+		noder.WaitForSyncBlkFinish()
+	}
 	if protocol.SERVICENODENAME != config.Parameters.NodeType {
 		log.Info("5. Start Consensus Services")
 		pool := txPoolServer.GetPID(tc.TxPoolActor)
@@ -158,8 +163,6 @@ func main() {
 		hserver.SetConsensusPid(consensusService.GetPID())
 		go localrpc.StartLocalServer()
 	}
-	noder.WaitForPeersStart()
-	noder.WaitForSyncBlkFinish()
 
 	log.Info("--Start the RPC interface")
 	go jsonrpc.StartRPCServer()

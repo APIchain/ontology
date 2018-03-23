@@ -36,6 +36,8 @@ import (
 	"sort"
 	"sync"
 	"time"
+	"strings"
+	"github.com/Ontology/common/config"
 )
 
 const (
@@ -468,25 +470,27 @@ func (this *LedgerStore) verifyHeader(header *types.Header) error {
 		return fmt.Errorf("block height is incorrect")
 	}
 
-	if prevHeader.Timestamp >= header.Timestamp {
-		return fmt.Errorf("block timestamp is incorrect")
-	}
+	consensusType := strings.ToLower(config.Parameters.ConsensusType)
+	if consensusType != "vbft" {
+		if prevHeader.Timestamp >= header.Timestamp {
+			log.Error("error ",prevHeader.Timestamp,)
+			return fmt.Errorf("block timestamp is incorrect")
+		}
+		address, err := types.AddressFromBookKeepers(header.BookKeepers)
+		if err != nil {
+			return err
+		}
+		if prevHeader.NextBookKeeper != address {
+			return fmt.Errorf("bookkeeper address error")
+		}
 
-	address, err := types.AddressFromBookKeepers(header.BookKeepers)
-	if err != nil {
-		return err
+		m := len(header.BookKeepers) - (len(header.BookKeepers)-1)/3
+		hash := header.Hash()
+		err = crypto.VerifyMultiSignature(hash[:], header.BookKeepers, m, header.SigData)
+		if err != nil {
+			return err
+		}
 	}
-	if prevHeader.NextBookKeeper != address {
-		return fmt.Errorf("bookkeeper address error")
-	}
-
-	m := len(header.BookKeepers) - (len(header.BookKeepers)-1)/3
-	hash := header.Hash()
-	err = crypto.VerifyMultiSignature(hash[:], header.BookKeepers, m, header.SigData)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
