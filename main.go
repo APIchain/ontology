@@ -26,12 +26,13 @@ import (
 	"github.com/Ontology/core/ledger"
 	ldgactor "github.com/Ontology/core/ledger/actor"
 	"github.com/Ontology/crypto"
+	"github.com/Ontology/events"
+	hserver "github.com/Ontology/http/base/actor"
 	"github.com/Ontology/http/jsonrpc"
 	"github.com/Ontology/http/localrpc"
 	"github.com/Ontology/http/nodeinfo"
 	"github.com/Ontology/http/restful"
 	"github.com/Ontology/http/websocket"
-	hserver "github.com/Ontology/http/base/actor"
 	"github.com/Ontology/net"
 	"github.com/Ontology/net/protocol"
 	"github.com/Ontology/txnpool"
@@ -41,10 +42,9 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"sort"
 	"syscall"
 	"time"
-	"github.com/Ontology/events"
-	"sort"
 	"strings"
 )
 
@@ -54,6 +54,8 @@ const (
 
 func init() {
 	log.Init(log.Path, log.Stdout)
+	// Todo: If the actor bus uses a different log lib, remove it
+
 	var coreNum int
 	if config.Parameters.MultiCoreNum > DefaultMultiCoreNum {
 		coreNum = int(config.Parameters.MultiCoreNum)
@@ -70,8 +72,8 @@ func main() {
 	var noder protocol.Noder
 	log.Trace("Node version: ", config.Version)
 
-	if len(config.Parameters.BookKeepers) < account.DefaultBookKeeperCount {
-		log.Fatal("At least ", account.DefaultBookKeeperCount, " BookKeepers should be set at config.json")
+	if len(config.Parameters.Bookkeepers) < account.DefaultBookkeeperCount {
+		log.Fatal("At least ", account.DefaultBookkeeperCount, " Bookkeepers should be set at config.json")
 		os.Exit(1)
 	}
 	crypto.SetAlg(config.Parameters.EncryptAlg)
@@ -88,10 +90,10 @@ func main() {
 		os.Exit(1)
 	}
 	log.Debug("The Node's PublicKey ", acct.PublicKey)
-	defBookKeepers, err := client.GetBookKeepers()
-	sort.Sort(crypto.PubKeySlice(defBookKeepers))
+	defBookkeepers, err := client.GetBookkeepers()
+	sort.Sort(crypto.PubKeySlice(defBookkeepers))
 	if err != nil {
-		log.Fatalf("GetBookKeepers error:%s", err)
+		log.Fatalf("GetBookkeepers error:%s", err)
 		os.Exit(1)
 	}
 	//Init event hub
@@ -103,7 +105,7 @@ func main() {
 		log.Fatalf("NewLedger error %s", err)
 		os.Exit(1)
 	}
-	err = ledger.DefLedger.Init(defBookKeepers)
+	err = ledger.DefLedger.Init(defBookkeepers)
 	if err != nil {
 		log.Fatalf("DefLedger.Init error %s", err)
 		os.Exit(1)
@@ -151,7 +153,7 @@ func main() {
 		noder.WaitForPeersStart()
 		noder.WaitForSyncBlkFinish()
 	}
-	if protocol.SERVICENODENAME != config.Parameters.NodeType {
+	if protocol.SERVICE_NODE_NAME != config.Parameters.NodeType {
 		log.Info("5. Start Consensus Services")
 		pool := txPoolServer.GetPID(tc.TxPoolActor)
 		consensusService, _ := consensus.NewConsensusService(acct, pool, ledgerPID, p2pActor)

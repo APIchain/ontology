@@ -26,29 +26,28 @@ import (
 )
 
 //initial a new transaction with asset registration payload
-func NewBookKeeperTransaction(pubKey *crypto.PubKey, isAdd bool, cert []byte, issuer *crypto.PubKey) (*types.Transaction, error) {
-	bookKeeperPayload := &payload.BookKeeper{
+func NewBookkeeperTransaction(pubKey *crypto.PubKey, isAdd bool, cert []byte, issuer *crypto.PubKey) (*types.Transaction, error) {
+	bookkeeperPayload := &payload.Bookkeeper{
 		PubKey: pubKey,
-		Action: payload.BookKeeperAction_SUB,
+		Action: payload.BookkeeperAction_SUB,
 		Cert:   cert,
 		Issuer: issuer,
 	}
 
 	if isAdd {
-		bookKeeperPayload.Action = payload.BookKeeperAction_ADD
+		bookkeeperPayload.Action = payload.BookkeeperAction_ADD
 	}
 
 	return &types.Transaction{
-		TxType:     types.BookKeeper,
-		Payload:    bookKeeperPayload,
+		TxType:     types.Bookkeeper,
+		Payload:    bookkeeperPayload,
 		Attributes: nil,
 	}, nil
 }
 
-func NewDeployTransaction(code []byte, name, version, author, email, desp string, vmType vmtypes.VmType, needStorage bool) *types.Transaction {
+func NewDeployTransaction(code *vmtypes.VmCode, name, version, author, email, desp string, needStorage bool) *types.Transaction {
 	//TODO: check arguments
 	DeployCodePayload := &payload.DeployCode{
-		VmType: vmType,
 		Code:        code,
 		NeedStorage: needStorage,
 		Name:        name,

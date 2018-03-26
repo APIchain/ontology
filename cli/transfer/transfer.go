@@ -34,7 +34,6 @@ import (
 	"bytes"
 	"github.com/Ontology/account"
 	"encoding/json"
-	"github.com/Ontology/common/serialization"
 	"encoding/hex"
 	"time"
 )
@@ -52,21 +51,21 @@ func transferAction(c *cli.Context) error {
 		os.Exit(1)
 	}
 	ct, _ := common.HexToBytes(contract)
-	ctu, _ := common.Uint160ParseFromBytes(ct)
+	ctu, _ := common.AddressParseFromBytes(ct)
 	from := c.String("from")
 	if from == "" {
 		fmt.Println("Invalid sender address: ", from)
 		os.Exit(1)
 	}
 	f, _ := common.HexToBytes(from)
-	fu, _ := common.Uint160ParseFromBytes(f)
+	fu, _ := common.AddressParseFromBytes(f)
 	to := c.String("to")
 	if to == "" {
 		fmt.Println("Invalid revicer address: ", to)
 		os.Exit(1)
 	}
 	t, _ := common.HexToBytes(to)
-	tu, _ := common.Uint160ParseFromBytes(t)
+	tu, _ := common.AddressParseFromBytes(t)
 	value := c.Int64("value")
 	if value <= 0 {
 		fmt.Println("Invalid ont amount: ", value)
@@ -79,26 +78,32 @@ func transferAction(c *cli.Context) error {
 		To: tu,
 		Value: big.NewInt(value),
 	})
-	transfers := new(states.Transfers)
-	fmt.Println("ctu:", ctu)
-	transfers.Params = append(transfers.Params, &states.TokenTransfer{
-		Contract: ctu,
+	transfers := &states.Transfers{
 		States: sts,
-	})
-
-	bf := new(bytes.Buffer)
-	if err := serialization.WriteVarBytes(bf, []byte("Token.Common.Transfer")); err != nil {
-		fmt.Println("Serialize transfer falg error.")
-		os.Exit(1)
 	}
+	bf := new(bytes.Buffer)
+
 	if err := transfers.Serialize(bf); err != nil {
 		fmt.Println("Serialize transfers struct error.")
 		os.Exit(1)
 	}
 
+	cont := &states.Contract{
+		Address: ctu,
+		Method: "transfer",
+		Args: bf.Bytes(),
+	}
+
+	ff := new(bytes.Buffer)
+
+	if err := cont.Serialize(ff); err != nil {
+		fmt.Println("Serialize contract struct error.")
+		os.Exit(1)
+	}
+
 	tx := cutils.NewInvokeTransaction(vmtypes.VmCode{
-		VmType: vmtypes.NativeVM,
-		Code: bf.Bytes(),
+		VmType: vmtypes.Native,
+		Code: ff.Bytes(),
 	})
 
 	tx.Nonce = uint32(time.Now().Unix())

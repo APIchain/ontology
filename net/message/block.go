@@ -26,39 +26,26 @@ import (
 	"github.com/Ontology/common"
 	"github.com/Ontology/common/log"
 	"github.com/Ontology/core/types"
-	. "github.com/Ontology/net/protocol"
 	"github.com/Ontology/net/actor"
+	. "github.com/Ontology/net/protocol"
 )
 
 type blockReq struct {
 	msgHdr
-	//TBD
 }
 
 type block struct {
 	msgHdr
 	blk types.Block
-	// TBD
-	//event *events.Event
 }
 
 func (msg block) Handle(node Noder) error {
 	log.Debug("RX block message")
-	//hash := msg.blk.Hash()
-	//if ledger.DefaultLedger.BlockInLedger(hash) {
-	//	ReceiveDuplicateBlockCnt++
-	//	log.Debug("Receive ", ReceiveDuplicateBlockCnt, " duplicated block.")
-	//	return nil
-	//}
-	//if err := ledger.DefaultLedger.Blockchain.AddBlock(&msg.blk); err != nil {
-	//	log.Warnf("Block add failed: %s,block hash is %x\n", err, hash)
-	//	return err
-	//}
-	//node.RemoveFlightHeight(msg.blk.Header.Height)
-	//node.LocalNode().GetEvent("block").Notify(events.EventNewInventory, &msg.blk)
 	hash := msg.blk.Hash()
-	if con, _ := actor.IsContainBlock(hash); con != true{
+	if con, _ := actor.IsContainBlock(hash); con != true {
 		actor.AddBlock(&msg.blk)
+		//FIXME if AddBlock successfully, removeFlightHeight
+		node.RemoveFlightHeight(msg.blk.Header.Height)
 	} else {
 		log.Debug("Receive duplicated block")
 	}
@@ -67,14 +54,13 @@ func (msg block) Handle(node Noder) error {
 
 func (msg dataReq) Handle(node Noder) error {
 	log.Debug()
-	reqtype := common.InventoryType(msg.dataType)
+	reqType := common.InventoryType(msg.dataType)
 	hash := msg.hash
-	switch reqtype {
+	switch reqType {
 	case common.BLOCK:
 		block, err := NewBlockFromHash(hash)
-		if err != nil {
+		if err != nil || block == nil {
 			log.Debug("Can't get block from hash: ", hash, " ,send not found message")
-			//call notfound message
 			b, err := NewNotFound(hash)
 			node.Tx(b)
 			return err
@@ -101,9 +87,8 @@ func (msg dataReq) Handle(node Noder) error {
 }
 
 func NewBlockFromHash(hash common.Uint256) (*types.Block, error) {
-	//bk, err := ledger.DefaultLedger.Store.GetBlock(hash)
 	bk, err := actor.GetBlockByHash(hash)
-	if err != nil {
+	if err != nil || bk == nil {
 		log.Errorf("Get Block error: %s, block hash: %x", err.Error(), hash)
 		return nil, err
 	}
@@ -114,7 +99,7 @@ func NewBlock(bk *types.Block) ([]byte, error) {
 	log.Debug()
 	var msg block
 	msg.blk = *bk
-	msg.msgHdr.Magic = NETMAGIC
+	msg.msgHdr.Magic = NET_MAGIC
 	cmd := "block"
 	copy(msg.msgHdr.CMD[0:len(cmd)], cmd)
 	tmpBuffer := bytes.NewBuffer([]byte{})
@@ -147,7 +132,7 @@ func ReqBlkData(node Noder, hash common.Uint256) error {
 	msg.dataType = common.BLOCK
 	msg.hash = hash
 
-	msg.msgHdr.Magic = NETMAGIC
+	msg.msgHdr.Magic = NET_MAGIC
 	copy(msg.msgHdr.CMD[0:7], "getdata")
 	p := bytes.NewBuffer([]byte{})
 	err := binary.Write(p, binary.LittleEndian, &(msg.dataType))

@@ -23,6 +23,7 @@ import (
 	"github.com/Ontology/core/payload"
 	"github.com/Ontology/core/states"
 	"github.com/Ontology/core/types"
+	"github.com/Ontology/smartcontract/event"
 )
 
 type AddHeaderReq struct {
@@ -178,10 +179,10 @@ type GetCurrentStateRootRsp struct {
 	Error     error
 }
 
-type GetBookKeeperStateReq struct{}
+type GetBookkeeperStateReq struct{}
 
-type GetBookKeeperStateRsp struct {
-	BookKeepState *states.BookKeeperState
+type GetBookkeeperStateRsp struct {
+	BookKeepState *states.BookkeeperState
 	Error         error
 }
 
@@ -211,4 +212,22 @@ type PreExecuteContractReq struct {
 type PreExecuteContractRsp struct {
 	Result []interface{}
 	Error  error
+}
+
+type GetEventNotifyByTxReq struct {
+	Tx common.Uint256
+}
+
+type GetEventNotifyByTxRsp struct {
+	Notifies []*event.NotifyEventInfo
+	Error error
+}
+
+type GetEventNotifyByBlockReq struct {
+	Height uint32
+}
+
+type GetEventNotifyByBlockRsp struct {
+	TxHashes []common.Uint256
+	Error error
 }

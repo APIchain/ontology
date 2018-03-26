@@ -26,8 +26,8 @@ import (
 	"github.com/Ontology/common/log"
 	"github.com/Ontology/consensus/dbft"
 	"github.com/Ontology/consensus/solo"
-	"github.com/Ontology/eventbus/actor"
 	"github.com/Ontology/consensus/vbft"
+	"github.com/ontio/ontology-eventbus/actor"
 )
 
 type ConsensusService interface {

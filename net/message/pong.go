@@ -25,8 +25,8 @@ import (
 	"github.com/Ontology/common/log"
 	"github.com/Ontology/common/serialization"
 	//"github.com/Ontology/ledger"
-	. "github.com/Ontology/net/protocol"
 	"github.com/Ontology/net/actor"
+	. "github.com/Ontology/net/protocol"
 )
 
 type pong struct {
@@ -36,9 +36,8 @@ type pong struct {
 
 func NewPongMsg() ([]byte, error) {
 	var msg pong
-	msg.msgHdr.Magic = NETMAGIC
+	msg.msgHdr.Magic = NET_MAGIC
 	copy(msg.msgHdr.CMD[0:7], "pong")
-	//msg.height = uint64(ledger.DefaultLedger.Store.GetHeaderHeight())
 	height, _ := actor.GetCurrentHeaderHeight()
 	msg.height = uint64(height)
 	tmpBuffer := bytes.NewBuffer([]byte{})

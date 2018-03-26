@@ -30,22 +30,21 @@ import (
 	"github.com/Ontology/core/utils"
 	"github.com/Ontology/crypto"
 	vmtypes "github.com/Ontology/vm/types"
+	"github.com/Ontology/smartcontract/service/native/states"
+	"bytes"
 )
 
 const (
 	BlockVersion      uint32 = 0
 	GenesisNonce      uint64 = 2083236893
-	DecrementInterval uint32 = 2000000
 
 	OntRegisterAmount = 1000000000
 	OngRegisterAmount = 1000000000
 )
 
 var (
-	GenerationAmount = [17]uint32{80, 70, 60, 50, 40, 30, 20, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10}
-
-	OntContractAddress, _ = common.Uint160ParseFromBytes([]byte{0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1})
-	OngContractAddress, _ = common.Uint160ParseFromBytes([]byte{0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2})
+	OntContractAddress, _ = common.AddressParseFromBytes([]byte{0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01})
+	OngContractAddress, _ = common.AddressParseFromBytes([]byte{0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02})
 
 	ONTToken   = NewGoverningToken()
 	ONGToken   = NewUtilityToken()
@@ -55,14 +54,14 @@ var (
 
 var GenBlockTime = (config.DEFAULTGENBLOCKTIME * time.Second)
 
-var GenesisBookKeepers []*crypto.PubKey
+var GenesisBookkeepers []*crypto.PubKey
 
-func GenesisBlockInit(defaultBookKeeper []*crypto.PubKey) (*types.Block, error) {
-	//getBookKeeper
-	GenesisBookKeepers = defaultBookKeeper
-	nextBookKeeper, err := types.AddressFromBookKeepers(defaultBookKeeper)
+func GenesisBlockInit(defaultBookkeeper []*crypto.PubKey) (*types.Block, error) {
+	//getBookkeeper
+	GenesisBookkeepers = defaultBookkeeper
+	nextBookkeeper, err := types.AddressFromBookkeepers(defaultBookkeeper)
 	if err != nil {
-		return nil, errors.New("[Block],GenesisBlockInit err with GetBookKeeperAddress")
+		return nil, errors.New("[Block],GenesisBlockInit err with GetBookkeeperAddress")
 	}
 
 	consensusPayload, err := vconfig.GenesisConsensusPayload()
@@ -79,9 +78,9 @@ func GenesisBlockInit(defaultBookKeeper []*crypto.PubKey) (*types.Block, error) 
 		Height:           uint32(0),
 		ConsensusData:    GenesisNonce,
 		ConsensusPayload: consensusPayload,
-		NextBookKeeper:   nextBookKeeper,
+		NextBookkeeper:   nextBookkeeper,
 
-		BookKeepers: nil,
+		Bookkeepers: nil,
 		SigData:     nil,
 	}
 
@@ -95,27 +94,51 @@ func GenesisBlockInit(defaultBookKeeper []*crypto.PubKey) (*types.Block, error) 
 			ont,
 			ong,
 			NewGoverningInit(),
+			NewUtilityInit(),
 		},
 	}
 	return genesisBlock, nil
 }
 
 func NewGoverningToken() *types.Transaction {
-	tx := utils.NewDeployTransaction([]byte("ONT Token"), "ONT", "1.0",
-		"Ontology Team", "contact@ont.io", "Ontology Network ONT Token", vmtypes.NativeVM, true)
+	tx := utils.NewDeployTransaction(&vmtypes.VmCode{Code: OntContractAddress[:], VmType: vmtypes.Native}, "ONT", "1.0",
+		"Ontology Team", "contact@ont.io", "Ontology Network ONT Token", true)
 	return tx
 }
 
 func NewUtilityToken() *types.Transaction {
-	tx := utils.NewDeployTransaction([]byte("ONT Token"), "ONG", "1.0",
-		"Ontology Team", "contact@ont.io", "Ontology Network ONG Token", vmtypes.NativeVM, true)
+	tx := utils.NewDeployTransaction(&vmtypes.VmCode{Code: OngContractAddress[:], VmType: vmtypes.Native}, "ONG", "1.0",
+		"Ontology Team", "contact@ont.io", "Ontology Network ONG Token", true)
 	return tx
 }
 
 func NewGoverningInit() *types.Transaction {
+	init := states.Contract{
+		Address: OntContractAddress,
+		Method: "init",
+		Args: []byte{},
+	}
+	bf := new(bytes.Buffer)
+	init.Serialize(bf)
 	vmCode := vmtypes.VmCode{
-		VmType: vmtypes.NativeVM,
-		Code:   []byte{14, 84, 111, 107, 101, 110, 46, 79, 110, 116, 46, 73, 110, 105, 116},
+		VmType: vmtypes.Native,
+		Code: bf.Bytes(),
+	}
+	tx := utils.NewInvokeTransaction(vmCode)
+	return tx
+}
+
+func NewUtilityInit() *types.Transaction {
+	init := states.Contract{
+		Address: OngContractAddress,
+		Method: "init",
+		Args: []byte{},
+	}
+	bf := new(bytes.Buffer)
+	init.Serialize(bf)
+	vmCode := vmtypes.VmCode{
+		VmType: vmtypes.Native,
+		Code: bf.Bytes(),
 	}
 	tx := utils.NewInvokeTransaction(vmCode)
 	return tx

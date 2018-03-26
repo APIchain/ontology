@@ -60,6 +60,12 @@ func SetDefaultFunc(def func(http.ResponseWriter, *http.Request)) {
 func Handle(w http.ResponseWriter, r *http.Request) {
 	mainMux.RLock()
 	defer mainMux.RUnlock()
+	if r.Method == "OPTIONS" {
+		w.Header().Add("Access-Control-Allow-Headers", "Content-Type")
+		w.Header().Set("content-type", "application/json;charset=utf-8")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		return
+	}
 	//JSON RPC commands should be POSTs
 	if r.Method != "POST" {
 		if mainMux.defaultFunction != nil {
@@ -115,6 +121,9 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 			log.Error("HTTP JSON RPC Handle - json.Marshal: ", err)
 			return
 		}
+		w.Header().Add("Access-Control-Allow-Headers", "Content-Type")
+		w.Header().Set("content-type", "application/json;charset=utf-8")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Write(data)
 	} else {
 		//if the function does not exist
@@ -132,6 +141,9 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 			log.Error("HTTP JSON RPC Handle - json.Marshal: ", err)
 			return
 		}
+		w.Header().Add("Access-Control-Allow-Headers", "Content-Type")
+		w.Header().Set("content-type", "application/json;charset=utf-8")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Write(data)
 	}
 }
@@ -147,6 +159,7 @@ func Call(address string, method string, id interface{}, params []interface{}) (
 		fmt.Fprintf(os.Stderr, "Marshal JSON request: %v\n", err)
 		return nil, err
 	}
+
 	resp, err := http.Post(address, "application/json", strings.NewReader(string(data)))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "POST request: %v\n", err)

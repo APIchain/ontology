@@ -19,16 +19,11 @@
 package actor
 
 import (
-	"github.com/Ontology/eventbus/actor"
-	//"github.com/Ontology/net/message"
+	"github.com/ontio/ontology-eventbus/actor"
 )
 
 var ConsensusPid *actor.PID
 
-//func PushConsensus(cons *message.ConsensusPayload){
-//	ConsensusPid.Tell(cons)
-//}
-
-func SetConsensusPid(conPid * actor.PID){
+func SetConsensusPid(conPid *actor.PID) {
 	ConsensusPid = conPid
 }

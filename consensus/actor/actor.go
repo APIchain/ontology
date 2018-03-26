@@ -25,7 +25,7 @@ import (
 	"github.com/Ontology/core/types"
 	"github.com/Ontology/crypto"
 	ontErrors "github.com/Ontology/errors"
-	"github.com/Ontology/eventbus/actor"
+	"github.com/ontio/ontology-eventbus/actor"
 	netActor "github.com/Ontology/net/actor"
 	txpool "github.com/Ontology/txnpool/common"
 )

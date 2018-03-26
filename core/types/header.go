@@ -39,10 +39,10 @@ type Header struct {
 	Height           uint32
 	ConsensusData    uint64
 	ConsensusPayload []byte
-	NextBookKeeper   Address
+	NextBookkeeper   Address
 
 	//Program *program.Program
-	BookKeepers []*crypto.PubKey
+	Bookkeepers []*crypto.PubKey
 	SigData     [][]byte
 
 	hash Uint256
@@ -52,11 +52,11 @@ type Header struct {
 func (bd *Header) Serialize(w io.Writer) error {
 	bd.SerializeUnsigned(w)
 
-	err := serialization.WriteVarUint(w, uint64(len(bd.BookKeepers)))
+	err := serialization.WriteVarUint(w, uint64(len(bd.Bookkeepers)))
 	if err != nil {
 		return errors.New("serialize sig pubkey length failed")
 	}
-	for _, pubkey := range bd.BookKeepers {
+	for _, pubkey := range bd.Bookkeepers {
 		err = pubkey.Serialize(w)
 		if err != nil {
 			return err
@@ -88,7 +88,7 @@ func (bd *Header) SerializeUnsigned(w io.Writer) error {
 	serialization.WriteUint32(w, bd.Height)
 	serialization.WriteUint64(w, bd.ConsensusData)
 	serialization.WriteVarBytes(w, bd.ConsensusPayload)
-	bd.NextBookKeeper.Serialize(w)
+	bd.NextBookkeeper.Serialize(w)
 	return nil
 }
 
@@ -103,14 +103,14 @@ func (bd *Header) Deserialize(r io.Reader) error {
 		return err
 	}
 
-	bd.BookKeepers = make([]*crypto.PubKey, n)
+	bd.Bookkeepers = make([]*crypto.PubKey, n)
 	for i := 0; i < int(n); i++ {
 		pubkey := new(crypto.PubKey)
 		err = pubkey.DeSerialize(r)
 		if err != nil {
 			return err
 		}
-		bd.BookKeepers[i] = pubkey
+		bd.Bookkeepers[i] = pubkey
 	}
 
 	m, err := serialization.ReadVarUint(r, 0)
@@ -165,12 +165,9 @@ func (bd *Header) DeserializeUnsigned(r io.Reader) error {
 
 	//consensusData
 	bd.ConsensusData, _ = serialization.ReadUint64(r)
-
-
-
 	bd.ConsensusPayload, err = serialization.ReadVarBytes(r)
-	//NextBookKeeper
-	err = bd.NextBookKeeper.Deserialize(r)
+	//NextBookkeeper
+	err = bd.NextBookkeeper.Deserialize(r)
 
 	return err
 }

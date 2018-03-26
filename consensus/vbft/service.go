@@ -23,6 +23,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math"
+	"reflect"
 	"sync"
 	"time"
 
@@ -33,11 +34,10 @@ import (
 	"github.com/Ontology/core/payload"
 	"github.com/Ontology/core/types"
 	"github.com/Ontology/crypto"
-	"github.com/Ontology/eventbus/actor"
+	"github.com/Ontology/events"
 	"github.com/Ontology/events/message"
 	p2pmsg "github.com/Ontology/net/message"
-	"reflect"
-	"github.com/Ontology/events"
+	"github.com/ontio/ontology-eventbus/actor"
 )
 
 type BftActionType uint8
@@ -99,7 +99,7 @@ type Server struct {
 	bftActionC chan *BftAction
 	msgSendC   chan *SendMsgEvent
 
-	sub *events.ActorSubscriber
+	sub   *events.ActorSubscriber
 	quitC chan interface{}
 	quit  bool
 }
