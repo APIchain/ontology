@@ -301,7 +301,6 @@ func (this *LedgerStore) clearCache() {
 	for blockHash, cacheItem := range this.blockCache {
 		block := cacheItem.item.(*types.Block)
 		if block.Header.Height > currentBlockHeight {
-
 			continue
 		}
 		delete(this.blockCache, blockHash)
@@ -570,10 +569,6 @@ func (this *LedgerStore) deleteSavingBlock(blockHash common.Uint256) {
 }
 
 func (this *LedgerStore) AddBlock(block *types.Block) error {
-	if !this.addSavingBlock(block.Hash()) {
-		return nil
-	}
-
 	currBlockHeight := this.GetCurrentBlockHeight()
 	blockHeight := block.Header.Height
 	if blockHeight <= currBlockHeight {
@@ -697,6 +692,10 @@ func (this *LedgerStore) saveBlockToEventStore(block *types.Block) error {
 func (this *LedgerStore) saveBlock(block *types.Block) error {
 	blockHash := block.Hash()
 	blockHeight := block.Header.Height
+	if !this.addSavingBlock(blockHash) || blockHeight <= this.GetCurrentBlockHeight(){
+		//hash already saved or is saving
+		return nil
+	}
 	defer this.deleteSavingBlock(blockHash)
 
 	this.blockStore.NewBatch()
