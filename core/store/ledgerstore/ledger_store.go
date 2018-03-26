@@ -236,6 +236,7 @@ func (this *LedgerStore) initStore() error {
 		if err != nil {
 			return fmt.Errorf("blockStore.GetBlock height:%d error:%s", i, err)
 		}
+		this.stateStore.NewBatch()
 		err = this.saveBlockToStateStore(block)
 		if err != nil {
 			return fmt.Errorf("save to state store height:%d error:%s", i, err)
@@ -255,6 +256,7 @@ func (this *LedgerStore) initStore() error {
 		if err != nil {
 			return fmt.Errorf("blockStore.GetBlock height:%d error:%s", i, err)
 		}
+		this.eventStore.NewBatch()
 		err = this.saveBlockToEventStore(block)
 		if err != nil {
 			return fmt.Errorf("save to event store height:%d error:%s", i, err)
@@ -607,7 +609,6 @@ func (this *LedgerStore) saveBlockToBlockStore(block *types.Block) error {
 	blockHash := block.Hash()
 	blockHeight := block.Header.Height
 
-	this.blockStore.NewBatch()
 	this.setHeaderIndex(blockHeight, blockHash)
 	err := this.saveHeaderIndexList()
 	if err != nil {
@@ -633,7 +634,6 @@ func (this *LedgerStore) saveBlockToStateStore(block *types.Block) error {
 	blockHash := block.Hash()
 	blockHeight := block.Header.Height
 
-	this.stateStore.NewBatch()
 	stateBatch := this.stateStore.NewStateBatch()
 
 	for _, tx := range block.Transactions {
@@ -672,7 +672,6 @@ func (this *LedgerStore) saveBlockToEventStore(block *types.Block) error {
 			invokeTxs = append(invokeTxs, txHash)
 		}
 	}
-	this.eventStore.NewBatch()
 	if len(invokeTxs) > 0 {
 		err := this.eventStore.SaveEventNotifyByBlock(block.Header.Height, invokeTxs)
 		if err != nil {
@@ -696,6 +695,9 @@ func (this *LedgerStore) saveBlock(block *types.Block) error {
 	blockHash := block.Hash()
 	blockHeight := block.Header.Height
 
+	this.blockStore.NewBatch()
+	this.stateStore.NewBatch()
+	this.eventStore.NewBatch()
 	err := this.saveBlockToBlockStore(block)
 	if err != nil {
 		return fmt.Errorf("save to block store error:%s", err)
