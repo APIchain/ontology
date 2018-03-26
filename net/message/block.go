@@ -59,7 +59,7 @@ func (msg dataReq) Handle(node Noder) error {
 	switch reqType {
 	case common.BLOCK:
 		block, err := NewBlockFromHash(hash)
-		if err != nil || block == nil {
+		if err != nil || block == nil || block.Header == nil {
 			log.Debug("Can't get block from hash: ", hash, " ,send not found message")
 			b, err := NewNotFound(hash)
 			node.Tx(b)
