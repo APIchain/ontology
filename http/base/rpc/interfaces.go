@@ -22,17 +22,19 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"math/big"
+
 	"github.com/Ontology/common"
 	"github.com/Ontology/common/config"
 	"github.com/Ontology/common/log"
 	"github.com/Ontology/core/genesis"
+	"github.com/Ontology/core/payload"
 	"github.com/Ontology/core/types"
 	onterr "github.com/Ontology/errors"
 	bactor "github.com/Ontology/http/base/actor"
 	bcomn "github.com/Ontology/http/base/common"
 	berr "github.com/Ontology/http/base/error"
-	"math/big"
-	"github.com/Ontology/core/payload"
+	vmtypes "github.com/Ontology/vm/neovm/types"
 )
 
 func GetGenerateBlockTime(params []interface{}) map[string]interface{} {
@@ -94,7 +96,7 @@ func GetBlock(params []interface{}) map[string]interface{} {
 		switch (params[1]).(type) {
 		case float64:
 			json := uint32(params[1].(float64))
-			if json == 1{
+			if json == 1 {
 				return responseSuccess(bcomn.GetBlockInfo(block))
 			}
 		default:
@@ -223,7 +225,7 @@ func GetRawTransaction(params []interface{}) map[string]interface{} {
 		switch (params[1]).(type) {
 		case float64:
 			json := uint32(params[1].(float64))
-			if json == 1{
+			if json == 1 {
 				return responseSuccess(bcomn.TransArryByteToHexString(tx))
 			}
 		default:
@@ -294,9 +296,9 @@ func SendRawTransaction(params []interface{}) map[string]interface{} {
 		if err := txn.Deserialize(bytes.NewReader(hex)); err != nil {
 			return responsePack(berr.INVALID_TRANSACTION, "")
 		}
-		if txn.TxType == types.Invoke && len(params) > 1{
-			preExec,ok := params[1].(float64)
-			if ok && preExec == 1{
+		if txn.TxType == types.Invoke && len(params) > 1 {
+			preExec, ok := params[1].(float64)
+			if ok && preExec == 1 {
 				log.Tracef("PreExec SMARTCODE")
 				if _, ok := txn.Payload.(*payload.InvokeCode); ok {
 					result, err := bactor.PreExecuteContract(&txn)
@@ -444,8 +446,8 @@ func GetBlockHeightByTxHash(params []interface{}) map[string]interface{} {
 		if err := hash.Deserialize(bytes.NewReader(hex)); err != nil {
 			return responsePack(berr.INVALID_PARAMS, "")
 		}
-		height,err := bactor.GetBlockHeightByTxHashFromStore(hash)
-		if err != nil{
+		height, err := bactor.GetBlockHeightByTxHashFromStore(hash)
+		if err != nil {
 			return responsePack(berr.INVALID_PARAMS, "")
 		}
 		return responseSuccess(height)
@@ -481,6 +483,51 @@ func GetBalance(params []interface{}) map[string]interface{} {
 	rsp := &bcomn.BalanceOfRsp{
 		Ont: ont.String(),
 		Ong: ong.String(),
+	}
+	return responseSuccess(rsp)
+}
+
+func GetContractBalance(params []interface{}) map[string]interface{} {
+	if len(params) < 2 {
+		return responsePack(berr.INVALID_PARAMS, "")
+	}
+
+	contractHash, ok := params[0].(string)
+	if !ok {
+		return responsePack(berr.INVALID_PARAMS, "")
+	}
+
+	b, err := hex.DecodeString(contractHash)
+	if err != nil {
+		return responsePack(berr.INVALID_PARAMS, "")
+	}
+
+	contractAddr, err := common.AddressParseFromBytes(b)
+
+	if err != nil {
+		return responsePack(berr.INVALID_PARAMS, "")
+	}
+
+	hexAddr, ok := params[1].(string)
+	if !ok {
+		return responsePack(berr.INVALID_PARAMS, "")
+	}
+
+	address, err := hex.DecodeString(hexAddr)
+	if err != nil {
+		return responsePack(berr.INVALID_PARAMS, "")
+	}
+
+	storage, err := bactor.GetStorageItem(contractAddr, address[:])
+	if err != nil {
+		log.Errorf("GetContractBalanceOf GetStorageItem  contract address:%s, hex account:%s error:%s", contractAddr, hexAddr, err)
+		return responsePack(berr.INTERNAL_ERROR, "internal error")
+	}
+
+	rsp := &struct {
+		Balance int64
+	}{
+		vmtypes.ConvertBytesToBigInteger(storage).Int64(),
 	}
 	return responseSuccess(rsp)
 }
