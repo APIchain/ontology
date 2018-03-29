@@ -53,10 +53,12 @@ func (node *node) GetBlkHdrs() {
 	rand.Seed(time.Now().UnixNano())
 	index := rand.Intn(nCount)
 	n := nodeList[index]
+	log.Error("send sync headers")
 	message.SendMsgSyncHeaders(n)
 }
 
 func (node *node) SyncBlk() {
+	log.Error("enter sync block")
 	headerHeight, _ := actor.GetCurrentHeaderHeight()
 	currentBlkHeight, _ := actor.GetCurrentBlockHeight()
 	if currentBlkHeight >= headerHeight {
@@ -80,6 +82,7 @@ func (node *node) SyncBlk() {
 				hash, _ := actor.GetBlockHashByHeight(f)
 				isContainBlock, _ := actor.IsContainBlock(hash)
 				if isContainBlock == false {
+					log.Error("send  sync block")
 					message.ReqBlkData(n, hash)
 				}
 			}
@@ -89,6 +92,7 @@ func (node *node) SyncBlk() {
 			hash, _ := actor.GetBlockHashByHeight(currentBlkHeight + reqCnt)
 			isContainBlock, _ := actor.IsContainBlock(hash)
 			if isContainBlock == false {
+				log.Error("send  sync block 2")
 				message.ReqBlkData(n, hash)
 				n.StoreFlightHeight(currentBlkHeight + reqCnt)
 			}
@@ -241,6 +245,7 @@ func (node *node) updateNodeInfo() {
 	for {
 		select {
 		case <-ticker.C:
+			log.Error("update node info")
 			node.SendPingToNbr()
 			node.GetBlkHdrs()
 			node.SyncBlk()
