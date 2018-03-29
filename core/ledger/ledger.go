@@ -20,21 +20,22 @@ package ledger
 
 import (
 	"fmt"
+
 	"github.com/Ontology/common"
 	"github.com/Ontology/core/genesis"
+	"github.com/Ontology/core/payload"
 	"github.com/Ontology/core/states"
 	"github.com/Ontology/core/store"
 	"github.com/Ontology/core/store/ledgerstore"
 	"github.com/Ontology/core/types"
-	"github.com/Ontology/crypto"
-	"github.com/Ontology/core/payload"
+	"github.com/ontio/ontology-crypto/keypair"
 	"github.com/Ontology/smartcontract/event"
 )
 
 var DefLedger *Ledger
 
 type Ledger struct {
-	ldgStore store.ILedgerStore
+	ldgStore store.LedgerStore
 }
 
 func NewLedger() (*Ledger, error) {
@@ -47,11 +48,11 @@ func NewLedger() (*Ledger, error) {
 	}, nil
 }
 
-func (this *Ledger) GetStore() store.ILedgerStore {
+func (this *Ledger) GetStore() store.LedgerStore {
 	return this.ldgStore
 }
 
-func (this *Ledger) Init(defaultBookkeeper []*crypto.PubKey) error {
+func (this *Ledger) Init(defaultBookkeeper []keypair.PublicKey) error {
 	genesisBlock, err := genesis.GenesisBlockInit(defaultBookkeeper)
 	if err != nil {
 		return fmt.Errorf("genesisBlock error %s", err)
@@ -136,9 +137,9 @@ func (this *Ledger) GetBookkeeperState() (*states.BookkeeperState, error) {
 	return this.ldgStore.GetBookkeeperState()
 }
 
-func (this *Ledger) GetStorageItem(codeHash *common.Address, key []byte) ([]byte, error) {
+func (this *Ledger) GetStorageItem(codeHash common.Address, key []byte) ([]byte, error) {
 	storageKey := &states.StorageKey{
-		CodeHash: *codeHash,
+		CodeHash: codeHash,
 		Key:      key,
 	}
 	storageItem, err := this.ldgStore.GetStorageItem(storageKey)

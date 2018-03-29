@@ -27,12 +27,12 @@ import (
 )
 
 const (
-	DefaultConfigFilename = "./config.json"
-	MINGENBLOCKTIME       = 2
-	DEFAULTGENBLOCKTIME   = 6
-	DBFTMINNODENUM        = 4 //min node number of dbft consensus
-	SOLOMINNODENUM        = 1 //min node number of solo consensus
-	VBFTMINNODENUM        = 4 //min node number of vbft consensus
+	DEFAULT_CONFIG_FILE_NAME = "./config.json"
+	MIN_GEN_BLOCK_TIME       = 2
+	DEFAULT_GEN_BLOCK_TIME   = 6
+	DBFT_MIN_NODE_NUM        = 4 //min node number of dbft consensus
+	SOLO_MIN_NODE_NUM        = 1 //min node number of solo consensus
+	VBFT_MIN_NODE_NUM        = 4 //min node number of vbft consensus
 )
 
 var Version string
@@ -61,7 +61,7 @@ type Configuration struct {
 	CAPath            string           `json:"CAPath"`
 	GenBlockTime      uint             `json:"GenBlockTime"`
 	MultiCoreNum      uint             `json:"MultiCoreNum"`
-	EncryptAlg        string           `json:"EncryptAlg"`
+	SignatureScheme   string           `json:"SignatureScheme"`
 	MaxLogSize        int64            `json:"MaxLogSize"`
 	MaxTxInBlock      int              `json:"MaxTransactionInBlock"`
 	MaxHdrSyncReqs    int              `json:"MaxConcurrentSyncHeaderReqs"`
@@ -77,7 +77,7 @@ type ConfigFile struct {
 var Parameters *Configuration
 
 func init() {
-	file, e := ioutil.ReadFile(DefaultConfigFilename)
+	file, e := ioutil.ReadFile(DEFAULT_CONFIG_FILE_NAME)
 	if e != nil {
 		log.Fatalf("File error: %v\n", e)
 		os.Exit(1)

@@ -24,6 +24,7 @@ import (
 	"github.com/Ontology/core/types"
 	onterr "github.com/Ontology/errors"
 	bactor "github.com/Ontology/http/base/actor"
+	"github.com/ontio/ontology-crypto/keypair"
 )
 
 
@@ -74,7 +75,7 @@ type BlockHead struct {
 	ConsensusData    uint64
 	NextBookkeeper   string
 
-	BookKeepers []string
+	Bookkeepers []string
 	SigData     []string
 
 	Hash string
@@ -82,7 +83,7 @@ type BlockHead struct {
 
 type BlockInfo struct {
 	Hash         string
-	Header    *BlockHead
+	Header       *BlockHead
 	Transactions []*Transactions
 }
 
@@ -135,13 +136,10 @@ func TransArryByteToHexString(ptx *types.Transaction) *Transactions {
 	for _, sig := range ptx.Sigs {
 		e := Sig{M: sig.M}
 		for i := 0; i < len(sig.PubKeys); i++ {
-			pk,err := sig.PubKeys[i].EncodePoint(true)
-			if err != nil{
-				continue
-			}
-			e.PubKeys = append(e.PubKeys, common.ToHexString(pk))
+			key := keypair.SerializePublicKey(sig.PubKeys[i])
+			e.PubKeys = append(e.PubKeys, common.ToHexString(key))
 		}
-		for i := 0; i < len(sig.SigData);i ++{
+		for i := 0; i < len(sig.SigData); i++ {
 			e.SigData = append(e.SigData, common.ToHexString(sig.SigData[i]))
 		}
 		trans.Sigs = append(trans.Sigs, e)
@@ -158,15 +156,8 @@ func VerifyAndSendTx(txn *types.Transaction) onterr.ErrCode {
 	// if transaction is verified unsucessfully then will not put it into transaction pool
 	if errCode := bactor.AppendTxToPool(txn); errCode != onterr.ErrNoError {
 		log.Warn("Can NOT add the transaction to TxnPool")
-		log.Info("[httpjsonrpc] VerifyTransaction failed when AppendTxnPool.")
 		return errCode
 	}
-	/* moveto txpool actor
-		if err := bactor.Xmit(txn); err != nil {
-			log.Error("Xmit Tx Error:Xmit transaction failed.", err)
-			return onterr.ErrXmitFail
-		}
-	*/
 	return onterr.ErrNoError
 }
 
@@ -180,12 +171,10 @@ func GetBlockInfo(block *types.Block) BlockInfo {
 	}
 	for i := 0; i < len(block.Header.Bookkeepers); i++ {
 		e := block.Header.Bookkeepers[i]
-		pk,err := e.EncodePoint(true)
-		if err != nil{
-			continue
-		}
-		bookKeepers = append(bookKeepers, common.ToHexString(pk))
+		key := keypair.SerializePublicKey(e)
+		bookKeepers = append(bookKeepers, common.ToHexString(key))
 	}
+
 	blockHead := &BlockHead{
 		Version:          block.Header.Version,
 		PrevBlockHash:    common.ToHexString(block.Header.PrevBlockHash.ToArray()),
@@ -195,8 +184,8 @@ func GetBlockInfo(block *types.Block) BlockInfo {
 		Height:           block.Header.Height,
 		ConsensusData:    block.Header.ConsensusData,
 		NextBookkeeper:   block.Header.NextBookkeeper.ToBase58(),
-		BookKeepers: bookKeepers,
-		SigData:     sigData,
+		Bookkeepers:      bookKeepers,
+		SigData:          sigData,
 		Hash: common.ToHexString(hash.ToArray()),
 	}
 
@@ -207,7 +196,7 @@ func GetBlockInfo(block *types.Block) BlockInfo {
 
 	b := BlockInfo{
 		Hash:         common.ToHexString(hash.ToArray()),
-		Header:    blockHead,
+		Header:       blockHead,
 		Transactions: trans,
 	}
 	return b

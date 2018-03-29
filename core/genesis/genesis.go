@@ -22,16 +22,16 @@ import (
 	"errors"
 	"fmt"
 	"time"
+	"bytes"
 
 	"github.com/Ontology/common"
 	"github.com/Ontology/common/config"
 	vconfig "github.com/Ontology/consensus/vbft/config"
 	"github.com/Ontology/core/types"
 	"github.com/Ontology/core/utils"
-	"github.com/Ontology/crypto"
 	vmtypes "github.com/Ontology/vm/types"
+	"github.com/ontio/ontology-crypto/keypair"
 	"github.com/Ontology/smartcontract/service/native/states"
-	"bytes"
 )
 
 const (
@@ -52,12 +52,12 @@ var (
 	ONGTokenID = ONGToken.Hash()
 )
 
-var GenBlockTime = (config.DEFAULTGENBLOCKTIME * time.Second)
+var GenBlockTime = (config.DEFAULT_GEN_BLOCK_TIME * time.Second)
 
-var GenesisBookkeepers []*crypto.PubKey
+var GenesisBookkeepers []keypair.PublicKey
 
-func GenesisBlockInit(defaultBookkeeper []*crypto.PubKey) (*types.Block, error) {
-	//getBookkeeper
+func GenesisBlockInit(defaultBookkeeper []keypair.PublicKey) (*types.Block, error) {
+	//getBookKeeper
 	GenesisBookkeepers = defaultBookkeeper
 	nextBookkeeper, err := types.AddressFromBookkeepers(defaultBookkeeper)
 	if err != nil {

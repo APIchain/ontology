@@ -19,13 +19,21 @@
 package main
 
 import (
+	"os"
+	"os/signal"
+	"runtime"
+	"sort"
+	"strings"
+	"syscall"
+	"time"
+
 	"github.com/Ontology/account"
 	"github.com/Ontology/common/config"
 	"github.com/Ontology/common/log"
 	"github.com/Ontology/consensus"
 	"github.com/Ontology/core/ledger"
 	ldgactor "github.com/Ontology/core/ledger/actor"
-	"github.com/Ontology/crypto"
+	"github.com/Ontology/core/signature"
 	"github.com/Ontology/events"
 	hserver "github.com/Ontology/http/base/actor"
 	"github.com/Ontology/http/jsonrpc"
@@ -39,13 +47,7 @@ import (
 	tc "github.com/Ontology/txnpool/common"
 	"github.com/Ontology/validator/statefull"
 	"github.com/Ontology/validator/stateless"
-	"os"
-	"os/signal"
-	"runtime"
-	"sort"
-	"syscall"
-	"time"
-	"strings"
+	"github.com/ontio/ontology-crypto/keypair"
 )
 
 const (
@@ -53,7 +55,7 @@ const (
 )
 
 func init() {
-	log.Init(log.Path, log.Stdout)
+	log.Init(log.PATH, log.Stdout)
 	// Todo: If the actor bus uses a different log lib, remove it
 
 	var coreNum int
@@ -76,7 +78,12 @@ func main() {
 		log.Fatal("At least ", account.DefaultBookkeeperCount, " Bookkeepers should be set at config.json")
 		os.Exit(1)
 	}
-	crypto.SetAlg(config.Parameters.EncryptAlg)
+
+	// Set default signature scheme
+	err = signature.SetDefaultScheme(config.Parameters.SignatureScheme)
+	if err != nil {
+		log.Warn("Config error: ", err)
+	}
 
 	log.Info("0. Open the account")
 	client := account.GetClient()
@@ -91,7 +98,7 @@ func main() {
 	}
 	log.Debug("The Node's PublicKey ", acct.PublicKey)
 	defBookkeepers, err := client.GetBookkeepers()
-	sort.Sort(crypto.PubKeySlice(defBookkeepers))
+	sort.Sort(keypair.NewPublicList(defBookkeepers))
 	if err != nil {
 		log.Fatalf("GetBookkeepers error:%s", err)
 		os.Exit(1)
@@ -141,6 +148,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	txPoolServer.RegisterActor(tc.NetActor, p2pActor)
+
 	hserver.SetNetServerPid(p2pActor)
 	hserver.SetLedgerPid(ledgerPID)
 	hserver.SetTxnPoolPid(txPoolServer.GetPID(tc.TxPoolActor))
@@ -178,7 +187,7 @@ func main() {
 }
 
 func logCurrBlockHeight() {
-	ticker := time.NewTicker(config.DEFAULTGENBLOCKTIME * time.Second)
+	ticker := time.NewTicker(config.DEFAULT_GEN_BLOCK_TIME * time.Second)
 	for {
 		select {
 		case <-ticker.C:
@@ -186,7 +195,7 @@ func logCurrBlockHeight() {
 			isNeedNewFile := log.CheckIfNeedNewFile()
 			if isNeedNewFile {
 				log.ClosePrintLog()
-				log.Init(log.Path, os.Stdout)
+				log.Init(log.PATH, os.Stdout)
 			}
 		}
 	}

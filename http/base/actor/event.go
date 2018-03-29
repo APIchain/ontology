@@ -36,15 +36,14 @@ func (t *EventActor) Receive(c actor.Context) {
 	case *message.SmartCodeEventMsg:
 		t.smartCodeEvt(*msg.Event)
 	default:
-		//fmt.Println(msg)
 	}
 }
 
 func SubscribeEvent(topic string,handler func(v interface{})) {
 	var props = actor.FromProducer(func() actor.Actor {
-		if topic == message.TopicSaveBlockComplete{
+		if topic == message.TOPIC_SAVE_BLOCK_COMPLETE {
 			return &EventActor{blockPersistCompleted:handler}
-		}else if topic == message.TopicSmartCodeEvent{
+		}else if topic == message.TOPIC_SMART_CODE_EVENT {
 			return &EventActor{smartCodeEvt:handler}
 		}else{
 			return &EventActor{}

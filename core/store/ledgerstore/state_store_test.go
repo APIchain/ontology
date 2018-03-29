@@ -19,18 +19,15 @@
 package ledgerstore
 
 import (
+	"testing"
+
+	"github.com/Ontology/core/payload"
 	"github.com/Ontology/core/states"
 	scommon "github.com/Ontology/core/store/common"
 	"github.com/Ontology/core/store/statestore"
-	"github.com/Ontology/core/payload"
-	"github.com/Ontology/crypto"
-	vmtypes"github.com/Ontology/vm/types"
-	"testing"
+	vmtypes "github.com/Ontology/vm/types"
+	"github.com/ontio/ontology-crypto/keypair"
 )
-
-func init() {
-	crypto.SetAlg("")
-}
 
 func TestContractState(t *testing.T) {
 	batch, err := getStateBatch()
@@ -40,13 +37,16 @@ func TestContractState(t *testing.T) {
 	}
 	testCode := []byte("testcode")
 
+	vmCode := &vmtypes.VmCode{
+		VmType:vmtypes.NEOVM,
+		Code:testCode,
+	}
 	deploy := &payload.DeployCode{
-		Code:        testCode,
-		VmType:      vmtypes.NEOVM,
+		Code:        vmCode,
 		NeedStorage: false,
 		Name:        "testsm",
 		Version:     "v1.0",
-		Author:     "",
+		Author:      "",
 		Email:       "",
 		Description: "",
 	}
@@ -56,13 +56,13 @@ func TestContractState(t *testing.T) {
 	}
 	codeHash := code.AddressFromVmCode()
 	err = batch.TryGetOrAdd(
-		scommon.ST_Contract,
+		scommon.ST_CONTRACT,
 		codeHash[:],
 		deploy,
 		false)
 	if err != nil {
-		 t.Errorf("TryGetOrAdd contract error %s", err)
-		 return
+		t.Errorf("TryGetOrAdd contract error %s", err)
+		return
 	}
 
 	err = batch.CommitTo()
@@ -97,12 +97,12 @@ func TestBookkeeperState(t *testing.T) {
 		return
 	}
 
-	_, pubKey1, _ := crypto.GenKeyPair()
-	_, pubKey2, _ := crypto.GenKeyPair()
-	currBookkeepers := make([]*crypto.PubKey, 0)
+	_, pubKey1, _ := keypair.GenerateKeyPair(keypair.PK_ECDSA, keypair.P256)
+	_, pubKey2, _ := keypair.GenerateKeyPair(keypair.PK_ECDSA, keypair.P256)
+	currBookkeepers := make([]keypair.PublicKey, 0)
 	currBookkeepers = append(currBookkeepers, &pubKey1)
 	currBookkeepers = append(currBookkeepers, &pubKey2)
-	nextBookkeepers := make([]*crypto.PubKey, 0)
+	nextBookkeepers := make([]keypair.PublicKey, 0)
 	nextBookkeepers = append(nextBookkeepers, &pubKey1)
 	nextBookkeepers = append(nextBookkeepers, &pubKey2)
 
@@ -110,7 +110,7 @@ func TestBookkeeperState(t *testing.T) {
 		CurrBookkeeper: currBookkeepers,
 		NextBookkeeper: nextBookkeepers,
 	}
-	batch.TryAdd(scommon.ST_Bookkeeper, BookerKeeper, bookkeeperState, false)
+	batch.TryAdd(scommon.ST_BOOK_KEEPER, BookerKeeper, bookkeeperState, false)
 	err = batch.CommitTo()
 	if err != nil {
 		t.Errorf("batch.CommitTo error %s", err)
@@ -130,15 +130,15 @@ func TestBookkeeperState(t *testing.T) {
 	nextBookkeepers1 := bookState.NextBookkeeper
 	for index, pk := range currBookkeepers {
 		pk1 := currBookkeepers1[index]
-		if pk.X.Cmp(pk1.X) != 0 || pk.Y.Cmp(pk1.Y) != 0 {
+		if !keypair.ComparePublicKey(pk,pk1){
 			t.Errorf("TestBookkeeperState currentBookkeeper failed")
 			return
 		}
 	}
 	for index, pk := range nextBookkeepers {
 		pk1 := nextBookkeepers1[index]
-		if pk.X.Cmp(pk1.X) != 0 || pk.Y.Cmp(pk1.Y) != 0 {
-			t.Errorf("TestBookkeeperState currentBookkeeper failed")
+		if !keypair.ComparePublicKey(pk,pk1){
+			t.Errorf("TestBookkeeperState nextBookkeeper failed")
 			return
 		}
 	}

@@ -21,25 +21,26 @@ package dbft
 import (
 	"bytes"
 	"fmt"
-	"time"
 	"reflect"
-	ldgractor"github.com/Ontology/core/ledger/actor"
+	"time"
+
 	"github.com/Ontology/account"
-	. "github.com/Ontology/common"
+	"github.com/Ontology/common"
 	"github.com/Ontology/common/config"
 	"github.com/Ontology/common/log"
 	actorTypes "github.com/Ontology/consensus/actor"
 	"github.com/Ontology/core/genesis"
 	"github.com/Ontology/core/ledger"
+	ldgractor "github.com/Ontology/core/ledger/actor"
 	"github.com/Ontology/core/payload"
+	"github.com/Ontology/core/signature"
 	"github.com/Ontology/core/types"
 	"github.com/Ontology/core/vote"
-	"github.com/Ontology/crypto"
-	"github.com/ontio/ontology-eventbus/actor"
 	"github.com/Ontology/events"
 	"github.com/Ontology/events/message"
 	p2pmsg "github.com/Ontology/net/message"
 	"github.com/Ontology/validator/increment"
+	"github.com/ontio/ontology-eventbus/actor"
 )
 
 type DbftService struct {
@@ -50,7 +51,7 @@ type DbftService struct {
 	timeView          byte
 	blockReceivedTime time.Time
 	started           bool
-	incrValidator *increment.IncrementValidator
+	incrValidator     *increment.IncrementValidator
 	poolActor         *actorTypes.TxPoolActor
 	p2p               *actorTypes.P2PActor
 
@@ -61,12 +62,12 @@ type DbftService struct {
 func NewDbftService(bkAccount *account.Account, txpool, p2p *actor.PID) (*DbftService, error) {
 
 	service := &DbftService{
-		Account:   bkAccount,
-		timer:     time.NewTimer(time.Second * 15),
-		started:   false,
+		Account:       bkAccount,
+		timer:         time.NewTimer(time.Second * 15),
+		started:       false,
 		incrValidator: increment.NewIncrementValidator(10),
-		poolActor: &actorTypes.TxPoolActor{Pool: txpool},
-		p2p:       &actorTypes.P2PActor{P2P: p2p},
+		poolActor:     &actorTypes.TxPoolActor{Pool: txpool},
+		p2p:           &actorTypes.P2PActor{P2P: p2p},
 	}
 
 	if !service.timer.Stop() {
@@ -224,12 +225,12 @@ func (ds *DbftService) CheckSignatures() error {
 		}
 		if !isExist {
 			// save block
-			future := ldgractor.DefLedgerPid.RequestFuture(&ldgractor.AddBlockReq{Block:block}, 30*time.Second)
+			future := ldgractor.DefLedgerPid.RequestFuture(&ldgractor.AddBlockReq{Block: block}, 30*time.Second)
 			result, err := future.Result()
 			if err != nil {
-				return fmt.Errorf("CheckSignatures DefLedgerPid.RequestFuture Height:%d error:%s",block.Header.Height, err)
+				return fmt.Errorf("CheckSignatures DefLedgerPid.RequestFuture Height:%d error:%s", block.Header.Height, err)
 			}
-			addBlockRsp :=  result.(*ldgractor.AddBlockRsp)
+			addBlockRsp := result.(*ldgractor.AddBlockRsp)
 			if addBlockRsp.Error != nil {
 				return fmt.Errorf("CheckSignatures AddBlockRsp Height:%d error:%s", block.Header.Height, addBlockRsp.Error)
 			}
@@ -242,14 +243,14 @@ func (ds *DbftService) CheckSignatures() error {
 	return nil
 }
 
-func (ds *DbftService) CreateBookkeepingTransaction(nonce uint64, fee Fixed64) *types.Transaction {
+func (ds *DbftService) CreateBookkeepingTransaction(nonce uint64, fee common.Fixed64) *types.Transaction {
 	log.Debug()
 	//TODO: sysfee
 	bookKeepingPayload := &payload.BookKeeping{
 		Nonce: uint64(time.Now().UnixNano()),
 	}
 	return &types.Transaction{
-		TxType: types.BookKeeping,
+		TxType:     types.BookKeeping,
 		Payload:    bookKeepingPayload,
 		Attributes: []*types.TxAttribute{},
 	}
@@ -275,7 +276,7 @@ func (ds *DbftService) halt() error {
 	}
 
 	if ds.started {
-		ds.sub.Unsubscribe(message.TopicSaveBlockComplete)
+		ds.sub.Unsubscribe(message.TOPIC_SAVE_BLOCK_COMPLETE)
 	}
 	return nil
 }
@@ -329,8 +330,8 @@ func (ds *DbftService) InitializeConsensus(viewNum byte) error {
 
 func (ds *DbftService) LocalNodeNewInventory(v interface{}) {
 	log.Debug()
-	if inventory, ok := v.(Inventory); ok {
-		if inventory.Type() == CONSENSUS {
+	if inventory, ok := v.(common.Inventory); ok {
+		if inventory.Type() == common.CONSENSUS {
 			payload, ret := inventory.(*p2pmsg.ConsensusPayload)
 			if ret == true {
 				ds.NewConsensusPayload(payload)
@@ -347,18 +348,17 @@ func (ds *DbftService) NewConsensusPayload(payload *p2pmsg.ConsensusPayload) {
 
 	//if payload is not same height with current contex, ignore it
 	if payload.Version != ContextVersion || payload.PrevHash != ds.context.PrevHash || payload.Height != ds.context.Height {
+		log.Debug("unmatched height")
 		return
 	}
 
 	if ds.context.State.HasFlag(BlockGenerated) {
-		return
-	}
-
-	if ds.context.State.HasFlag(BlockGenerated) {
+		log.Debug("has flag 'BlockGenerated'")
 		return
 	}
 
 	if int(payload.BookkeeperIndex) >= len(ds.context.Bookkeepers) {
+		log.Debug("bookkeeper index out of range")
 		return
 	}
 
@@ -399,6 +399,8 @@ func (ds *DbftService) NewConsensusPayload(payload *p2pmsg.ConsensusPayload) {
 			ds.BlockSignaturesReceived(payload, blockSigs)
 		}
 		break
+	default:
+		log.Warn("unknown consensus message type")
 	}
 }
 
@@ -446,7 +448,7 @@ func (ds *DbftService) PrepareRequestReceived(payload *p2pmsg.ConsensusPayload, 
 	ds.context.header = nil
 
 	blockHash := ds.context.MakeHeader().Hash()
-	err = crypto.Verify(*ds.context.Bookkeepers[payload.BookkeeperIndex], blockHash[:], message.Signature)
+	err = signature.Verify(ds.context.Bookkeepers[payload.BookkeeperIndex], blockHash[:], message.Signature)
 	if err != nil {
 		log.Warn("PrepareRequestReceived VerifySignature failed.", err)
 		ds.context = backupContext
@@ -475,7 +477,7 @@ func (ds *DbftService) PrepareRequestReceived(payload *p2pmsg.ConsensusPayload, 
 			validHeight = start
 		} else {
 			ds.incrValidator.Clean()
-			log.Infof("incr validator block height %v != ledger block height %v", end -1, height)
+			log.Infof("incr validator block height %v != ledger block height %v", end-1, height)
 		}
 
 		if err := ds.poolActor.VerifyBlock(ds.context.Transactions[1:], validHeight); err != nil {
@@ -487,7 +489,7 @@ func (ds *DbftService) PrepareRequestReceived(payload *p2pmsg.ConsensusPayload, 
 		}
 
 		for _, tx := range ds.context.Transactions[1:] {
-			if  err := ds.incrValidator.Verify(tx, validHeight) ; err != nil {
+			if err := ds.incrValidator.Verify(tx, validHeight); err != nil {
 				log.Error("PrepareRequestReceived new transaction increment verification failed, will not sent Prepare Response", err)
 				ds.context = backupContext
 				ds.RequestChangeView()
@@ -525,12 +527,12 @@ func (ds *DbftService) PrepareRequestReceived(payload *p2pmsg.ConsensusPayload, 
 		return
 	}
 
-	sign, err := crypto.Sign(ds.Account.PrivKey(), blockHash[:])
+	sig, err := signature.Sign(ds.Account.PrivKey(), blockHash[:])
 	if err != nil {
-		log.Error("[DbftService] SignBySigner failed")
+		log.Error("[DbftService] signing failed")
 		return
 	}
-	ds.context.Signatures[ds.context.BookkeeperIndex] = sign
+	ds.context.Signatures[ds.context.BookkeeperIndex] = sig
 
 	payload = ds.context.MakePrepareResponse(ds.context.Signatures[ds.context.BookkeeperIndex])
 	ds.SignAndRelay(payload)
@@ -555,7 +557,7 @@ func (ds *DbftService) PrepareResponseReceived(payload *p2pmsg.ConsensusPayload,
 		return
 	}
 	blockHash := header.Hash()
-	err := crypto.Verify(*ds.context.Bookkeepers[payload.BookkeeperIndex], blockHash[:], message.Signature)
+	err := signature.Verify(ds.context.Bookkeepers[payload.BookkeeperIndex], blockHash[:], message.Signature)
 	if err != nil {
 		return
 	}
@@ -595,7 +597,7 @@ func (ds *DbftService) BlockSignaturesReceived(payload *p2pmsg.ConsensusPayload,
 			continue
 		}
 
-		err := crypto.Verify(*ds.context.Bookkeepers[sigdata.Index], blockHash[:], sigdata.Signature)
+		err := signature.Verify(ds.context.Bookkeepers[sigdata.Index], blockHash[:], sigdata.Signature)
 		if err != nil {
 			continue
 		}
@@ -641,7 +643,7 @@ func (ds *DbftService) RequestChangeView() {
 func (ds *DbftService) SignAndRelay(payload *p2pmsg.ConsensusPayload) {
 	buf := new(bytes.Buffer)
 	payload.SerializeUnsigned(buf)
-	payload.Signature, _ = crypto.Sign(ds.Account.PrivKey(), buf.Bytes())
+	payload.Signature, _ = signature.Sign(ds.Account.PrivKey(), buf.Bytes())
 
 	ds.p2p.Broadcast(payload)
 }
@@ -650,13 +652,13 @@ func (ds *DbftService) start() {
 	log.Debug()
 	ds.started = true
 
-	if config.Parameters.GenBlockTime > config.MINGENBLOCKTIME {
+	if config.Parameters.GenBlockTime > config.MIN_GEN_BLOCK_TIME {
 		genesis.GenBlockTime = time.Duration(config.Parameters.GenBlockTime) * time.Second
 	} else {
 		log.Warn("The Generate block time should be longer than 2 seconds, so set it to be default 6 seconds.")
 	}
 
-	ds.sub.Subscribe(message.TopicSaveBlockComplete)
+	ds.sub.Subscribe(message.TOPIC_SAVE_BLOCK_COMPLETE)
 
 	ds.InitializeConsensus(0)
 }
@@ -691,31 +693,31 @@ func (ds *DbftService) Timeout() {
 				ds.context.Timestamp = now
 			}
 
-			ds.context.Nonce = GetNonce()
+			ds.context.Nonce = common.GetNonce()
 
-			height :=  ds.context.Height - 1
+			height := ds.context.Height - 1
 			validHeight := height
 
 			start, end := ds.incrValidator.BlockRange()
 
-			if height + 1 == end {
+			if height+1 == end {
 				validHeight = start
 			} else {
 				ds.incrValidator.Clean()
-				log.Infof("incr validator block height %v != ledger block height %v", end -1, height)
+				log.Infof("incr validator block height %v != ledger block height %v", end-1, height)
 			}
 
 			log.Infof("current block Height %v, incrValidateHeight %v", height, validHeight)
 			txs := ds.poolActor.GetTxnPool(true, validHeight)
 			// todo : fix feesum calcuation
-			feeSum := Fixed64(0)
+			feeSum := common.Fixed64(0)
 
 			txBookkeeping := ds.CreateBookkeepingTransaction(ds.context.Nonce, feeSum)
 			transactions := make([]*types.Transaction, 0, len(txs)+1)
 			transactions = append(transactions, txBookkeeping)
 			for _, txEntry := range txs {
 				// TODO optimize to use height in txentry
-				if  err := ds.incrValidator.Verify(txEntry.Tx, validHeight) ; err == nil {
+				if err := ds.incrValidator.Verify(txEntry.Tx, validHeight); err == nil {
 					transactions = append(transactions, txEntry.Tx)
 				}
 			}
@@ -736,7 +738,7 @@ func (ds *DbftService) Timeout() {
 			//build block and sign
 			block := ds.context.MakeHeader()
 			blockHash := block.Hash()
-			ds.context.Signatures[ds.context.BookkeeperIndex], _ = crypto.Sign(ds.Account.PrivKey(), blockHash[:])
+			ds.context.Signatures[ds.context.BookkeeperIndex], _ = signature.Sign(ds.Account.PrivKey(), blockHash[:])
 		}
 		payload := ds.context.MakePrepareRequest()
 		ds.SignAndRelay(payload)

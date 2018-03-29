@@ -19,20 +19,21 @@
 package neovm
 
 import (
+	"math/big"
+	"strings"
+
 	"github.com/Ontology/common"
 	"github.com/Ontology/common/log"
 	"github.com/Ontology/core/states"
 	"github.com/Ontology/core/store"
 	"github.com/Ontology/core/types"
-	"github.com/Ontology/crypto"
 	"github.com/Ontology/errors"
 	. "github.com/Ontology/smartcontract/common"
 	"github.com/Ontology/smartcontract/event"
 	trigger "github.com/Ontology/smartcontract/types"
 	vm "github.com/Ontology/vm/neovm"
 	vmtypes "github.com/Ontology/vm/neovm/types"
-	"math/big"
-	"strings"
+	"github.com/ontio/ontology-crypto/keypair"
 	"github.com/Ontology/core/payload"
 )
 
@@ -46,10 +47,10 @@ type StateReader struct {
 	serviceMap    map[string]func(*vm.ExecutionEngine) (bool, error)
 	trigger       trigger.TriggerType
 	Notifications []*event.NotifyEventInfo
-	ldgerStore    store.ILedgerStore
+	ldgerStore    store.LedgerStore
 }
 
-func NewStateReader(ldgerStore store.ILedgerStore, trigger trigger.TriggerType) *StateReader {
+func NewStateReader(ldgerStore store.LedgerStore, trigger trigger.TriggerType) *StateReader {
 	var stateReader StateReader
 	stateReader.ldgerStore = ldgerStore
 	stateReader.serviceMap = make(map[string]func(*vm.ExecutionEngine) (bool, error), 0)
@@ -86,7 +87,6 @@ func NewStateReader(ldgerStore store.ILedgerStore, trigger trigger.TriggerType) 
 
 	stateReader.Register("Neo.Attribute.GetUsage", stateReader.AttributeGetUsage)
 	stateReader.Register("Neo.Attribute.GetData", stateReader.AttributeGetData)
-
 
 	stateReader.Register("Neo.Storage.GetScript", stateReader.ContractGetCode)
 	stateReader.Register("Neo.Storage.GetContext", stateReader.StorageGetContext)
@@ -175,7 +175,7 @@ func (s *StateReader) CheckWitnessHash(engine *vm.ExecutionEngine, address commo
 	return contains(addresses, address), nil
 }
 
-func (s *StateReader) CheckWitnessPublicKey(engine *vm.ExecutionEngine, publicKey *crypto.PubKey) (bool, error) {
+func (s *StateReader) CheckWitnessPublicKey(engine *vm.ExecutionEngine, publicKey keypair.PublicKey) (bool, error) {
 	return s.CheckWitnessHash(engine, types.AddressFromPubKey(publicKey))
 }
 
@@ -194,8 +194,8 @@ func (s *StateReader) RuntimeCheckWitness(e *vm.ExecutionEngine) (bool, error) {
 			return false, err
 		}
 		result, err = s.CheckWitnessHash(e, program)
-	} else if len(data) == 33 {
-		publicKey, err := crypto.DecodePoint(data)
+	} else if len(data) == 33 + 2 {
+		publicKey, err := keypair.DeserializePublicKey(data)
 		if err != nil {
 			return false, err
 		}

@@ -20,19 +20,19 @@ package txnpool
 
 import (
 	"github.com/Ontology/common/log"
-	"github.com/ontio/ontology-eventbus/actor"
 	"github.com/Ontology/events"
 	"github.com/Ontology/events/message"
 	tc "github.com/Ontology/txnpool/common"
 	tp "github.com/Ontology/txnpool/proc"
+	"github.com/ontio/ontology-eventbus/actor"
 )
 
-func startActor(obj interface{}) *actor.PID {
+func startActor(obj interface{}, id string) *actor.PID {
 	props := actor.FromProducer(func() actor.Actor {
 		return obj.(actor.Actor)
 	})
 
-	pid := actor.Spawn(props)
+	pid, _ := actor.SpawnNamed(props, id)
 	if pid == nil {
 		log.Error("Fail to start actor")
 		return nil
@@ -46,11 +46,11 @@ func StartTxnPoolServer() *tp.TXPoolServer {
 	/* Start txnpool server to receive msgs from p2p,
 	 * consensus and valdiators
 	 */
-	s = tp.NewTxPoolServer(tc.MAXWORKERNUM)
+	s = tp.NewTxPoolServer(tc.MAX_WORKER_NUM)
 
 	// Initialize an actor to handle the msgs from valdiators
 	rspActor := tp.NewVerifyRspActor(s)
-	rspPid := startActor(rspActor)
+	rspPid := startActor(rspActor, "txVerifyRsp")
 	if rspPid == nil {
 		log.Error("Fail to start verify rsp actor")
 		return nil
@@ -59,7 +59,7 @@ func StartTxnPoolServer() *tp.TXPoolServer {
 
 	// Initialize an actor to handle the msgs from consensus
 	tpa := tp.NewTxPoolActor(s)
-	txPoolPid := startActor(tpa)
+	txPoolPid := startActor(tpa, "txPool")
 	if txPoolPid == nil {
 		log.Error("Fail to start txnpool actor")
 		return nil
@@ -68,7 +68,7 @@ func StartTxnPoolServer() *tp.TXPoolServer {
 
 	// Initialize an actor to handle the msgs from p2p and api
 	ta := tp.NewTxActor(s)
-	txPid := startActor(ta)
+	txPid := startActor(ta, "tx")
 	if txPid == nil {
 		log.Error("Fail to start txn actor")
 		return nil
@@ -77,6 +77,6 @@ func StartTxnPoolServer() *tp.TXPoolServer {
 
 	// Subscribe the block complete event
 	var sub = events.NewActorSubscriber(txPoolPid)
-	sub.Subscribe(message.TopicSaveBlockComplete)
+	sub.Subscribe(message.TOPIC_SAVE_BLOCK_COMPLETE)
 	return s
 }

@@ -22,63 +22,76 @@ import (
 	"io"
 
 	"github.com/Ontology/common/serialization"
-	"github.com/Ontology/crypto"
-	. "github.com/Ontology/errors"
+	"github.com/ontio/ontology-crypto/keypair"
+	"fmt"
 )
 
-const BookkeeperPayloadVersion byte = 0x00
+const BookKeeperPayloadVersion byte = 0x00
 
-type BookkeeperAction byte
+type BookKeeperAction byte
 
 const (
-	BookkeeperAction_ADD BookkeeperAction = 0
-	BookkeeperAction_SUB BookkeeperAction = 1
+	BookKeeperAction_ADD BookKeeperAction = 0
+	BookKeeperAction_SUB BookKeeperAction = 1
 )
 
 type Bookkeeper struct {
-	PubKey *crypto.PubKey
-	Action BookkeeperAction
+	PubKey keypair.PublicKey
+	Action BookKeeperAction
 	Cert   []byte
-	Issuer *crypto.PubKey
+	Issuer keypair.PublicKey
 }
 
 func (self *Bookkeeper) Serialize(w io.Writer) error {
-	if err := self.PubKey.Serialize(w); err != nil {
-		return NewDetailErr(err, ErrNoCode, "[Bookkeeper], PubKey Serialize failed.")
+	err := serialization.WriteVarBytes(w, keypair.SerializePublicKey(self.PubKey))
+	if err != nil {
+		return fmt.Errorf("[Bookkeeper], serializing PubKey failed: %s", err)
 	}
-	if err := serialization.WriteVarBytes(w, []byte{byte(self.Action)}); err != nil {
-		return NewDetailErr(err, ErrNoCode, "[Bookkeeper], Action Serialize failed.")
+	err = serialization.WriteVarBytes(w, []byte{byte(self.Action)})
+	if err != nil {
+		return fmt.Errorf("[Bookkeeper], serializing Action failed: %s", err)
 	}
-	if err := serialization.WriteVarBytes(w, self.Cert); err != nil {
-		return NewDetailErr(err, ErrNoCode, "[Bookkeeper], Cert Serialize failed.")
+	err = serialization.WriteVarBytes(w, self.Cert)
+	if err != nil {
+		return fmt.Errorf("[Bookkeeper], serializing Cert failed: %s", err)
 	}
-	if err := self.Issuer.Serialize(w); err != nil {
-		return NewDetailErr(err, ErrNoCode, "[Bookkeeper], Issuer Serialize failed.")
+	err = serialization.WriteVarBytes(w, keypair.SerializePublicKey(self.Issuer))
+	if err != nil {
+		return fmt.Errorf("[Bookkeeper], serializing Issuer failed: %s", err)
 	}
 	return nil
 }
 
 func (self *Bookkeeper) Deserialize(r io.Reader) error {
-	self.PubKey = new(crypto.PubKey)
-	err := self.PubKey.DeSerialize(r)
+	buf, err := serialization.ReadVarBytes(r)
 	if err != nil {
-		return NewDetailErr(err, ErrNoCode, "[Bookkeeper], PubKey Deserialize failed.")
+		return fmt.Errorf("[Bookkeeper], deserializing PubKey failed: %s", err)
 	}
+	self.PubKey, err = keypair.DeserializePublicKey(buf)
+	if err != nil {
+		return fmt.Errorf("[Bookkeeper], deserializing PubKey failed: %s", err)
+	}
+
 	var p [1]byte
 	n, err := r.Read(p[:])
 	if n == 0 {
-		return NewDetailErr(err, ErrNoCode, "[Bookkeeper], Action Deserialize failed.")
+		return fmt.Errorf("[Bookkeeper], deserializing Action failed: %s", err)
 	}
-	self.Action = BookkeeperAction(p[0])
+	self.Action = BookKeeperAction(p[0])
 	self.Cert, err = serialization.ReadVarBytes(r)
 	if err != nil {
-		return NewDetailErr(err, ErrNoCode, "[Bookkeeper], Cert Deserialize failed.")
+		return fmt.Errorf("[Bookkeeper], deserializing Cert failed: %s", err)
 	}
-	self.Issuer = new(crypto.PubKey)
-	err = self.Issuer.DeSerialize(r)
+
+	buf, err = serialization.ReadVarBytes(r)
 	if err != nil {
-		return NewDetailErr(err, ErrNoCode, "[Bookkeeper], Issuer Deserialize failed.")
+		return fmt.Errorf("[Bookkeeper], deserializing Issuer failed: %s", err)
+	}
+	self.Issuer, err = keypair.DeserializePublicKey(buf)
+	if err != nil {
+		return fmt.Errorf("[Bookkeeper], deserializing Issuer failed: %s", err)
 	}
 
 	return nil
 }
+

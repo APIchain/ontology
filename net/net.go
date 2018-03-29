@@ -19,10 +19,10 @@
 package net
 
 import (
-	"github.com/Ontology/crypto"
 	ns "github.com/Ontology/net/actor"
 	"github.com/Ontology/net/node"
 	"github.com/Ontology/net/protocol"
+	"github.com/ontio/ontology-crypto/keypair"
 	"github.com/ontio/ontology-eventbus/actor"
 )
 
@@ -43,7 +43,7 @@ func InitNetServerActor(noder protocol.Noder) (*actor.PID, error) {
 	return netServerPid, err
 }
 
-func StartProtocol(pubKey *crypto.PubKey) protocol.Noder {
+func StartProtocol(pubKey keypair.PublicKey) protocol.Noder {
 	net := node.InitNode(pubKey)
 	net.ConnectSeeds()
 	return net

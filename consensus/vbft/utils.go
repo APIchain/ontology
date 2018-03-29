@@ -26,17 +26,18 @@ import (
 
 	. "github.com/Ontology/common"
 	"github.com/Ontology/consensus/vbft/config"
-	"github.com/Ontology/crypto"
+	"github.com/Ontology/core/signature"
+	"github.com/ontio/ontology-crypto/keypair"
 )
 
-func SignMsg(sk []byte, msg ConsensusMsg) ([]byte, error) {
+func SignMsg(sk keypair.PrivateKey, msg ConsensusMsg) ([]byte, error) {
 
 	data, err := msg.Serialize()
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal msg when signing: %s", err)
 	}
 
-	return crypto.Sign(sk, data)
+	return signature.Sign(sk, data)
 }
 
 func HashBlock(blk *Block) (Uint256, error) {

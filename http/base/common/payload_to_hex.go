@@ -1,27 +1,10 @@
-/*
- * Copyright (C) 2018 The ontology Authors
- * This file is part of The ontology library.
- *
- * The ontology is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * The ontology is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with The ontology.  If not, see <http://www.gnu.org/licenses/>.
- */
-
 package common
 
 import (
-	"github.com/Ontology/common"
+	. "github.com/Ontology/common"
 	"github.com/Ontology/core/payload"
 	"github.com/Ontology/core/types"
+	"github.com/ontio/ontology-crypto/keypair"
 )
 
 type PayloadInfo interface{}
@@ -29,9 +12,7 @@ type PayloadInfo interface{}
 //implement PayloadInfo define BookKeepingInfo
 type BookKeepingInfo struct {
 	Nonce  uint64
-	//Issuer IssuerInfo
 }
-
 
 type InvokeCodeInfo struct {
 	Code     string
@@ -106,30 +87,29 @@ func TransPayloadToHex(p types.Payload) PayloadInfo {
 		return obj
 	case *payload.Bookkeeper:
 		obj := new(BookkeeperInfo)
-		encodedPubKey, _ := object.PubKey.EncodePoint(true)
-		obj.PubKey = common.ToHexString(encodedPubKey)
-		if object.Action == payload.BookkeeperAction_ADD {
+		pubKeyBytes := keypair.SerializePublicKey(object.PubKey)
+		obj.PubKey = ToHexString(pubKeyBytes)
+		if object.Action == payload.BookKeeperAction_ADD {
 			obj.Action = "add"
-		} else if object.Action == payload.BookkeeperAction_SUB {
+		} else if object.Action == payload.BookKeeperAction_SUB {
 			obj.Action = "sub"
 		} else {
 			obj.Action = "nil"
 		}
-		pk,err :=object.Issuer.EncodePoint(true)
-		if err == nil{
-			obj.Issuer = common.ToHexString(pk)
-		}
+		pubKeyBytes = keypair.SerializePublicKey(object.Issuer)
+		obj.Issuer = ToHexString(pubKeyBytes)
+
 		return obj
 	case *payload.InvokeCode:
 		obj := new(InvokeCodeInfo)
-		obj.Code = common.ToHexString(object.Code.Code)
+		obj.Code = ToHexString(object.Code.Code)
 		obj.GasLimit = uint64(object.GasLimit)
 		obj.VmType = int(object.Code.VmType)
 		return obj
 	case *payload.DeployCode:
 		obj := new(DeployCodeInfo)
 		obj.VmType = int(object.Code.VmType)
-		obj.Code = common.ToHexString(object.Code.Code)
+		obj.Code = ToHexString(object.Code.Code)
 		obj.NeedStorage = object.NeedStorage
 		obj.Name = object.Name
 		obj.CodeVersion = object.Version
@@ -140,10 +120,10 @@ func TransPayloadToHex(p types.Payload) PayloadInfo {
 	case *payload.Vote:
 		obj := new(VoteInfo)
 		obj.PubKeys = make([]string, len(object.PubKeys))
-		obj.Voter = common.ToHexString(object.Account[:])
+		obj.Voter = ToHexString(object.Account[:])
 		for i, key := range object.PubKeys {
-			encodedPubKey, _ := key.EncodePoint(true)
-			obj.PubKeys[i] = common.ToHexString(encodedPubKey)
+			pubKeyBytes := keypair.SerializePublicKey(key)
+			obj.PubKeys[i] = ToHexString(pubKeyBytes)
 		}
 	}
 	return nil

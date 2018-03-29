@@ -19,11 +19,12 @@
 package payload
 
 import (
-	. "github.com/Ontology/common"
-	"github.com/Ontology/common/serialization"
-	"github.com/Ontology/crypto"
 	"io"
-	. "github.com/Ontology/errors"
+
+	"github.com/Ontology/common"
+	"github.com/Ontology/common/serialization"
+	"github.com/ontio/ontology-crypto/keypair"
+	"fmt"
 )
 
 const (
@@ -31,9 +32,9 @@ const (
 )
 
 type Vote struct {
-	PubKeys []*crypto.PubKey // vote node list
+	PubKeys []keypair.PublicKey // vote node list
 
-	Account Address
+	Account common.Address
 }
 
 func (self *Vote) Check() bool {
@@ -45,15 +46,17 @@ func (self *Vote) Check() bool {
 
 func (self *Vote) Serialize(w io.Writer) error {
 	if err := serialization.WriteUint32(w, uint32(len(self.PubKeys))); err != nil {
-		return NewDetailErr(err, ErrNoCode, "Vote PubKeys length Serialize failed.")
+			return fmt.Errorf("Vote PubKeys length Serialize failed: %s", err)
 	}
 	for _, key := range self.PubKeys {
-		if err := key.Serialize(w); err != nil {
-			return NewDetailErr(err, ErrNoCode, "InvokeCode PubKeys Serialize failed.")
+		buf := keypair.SerializePublicKey(key)
+		err := serialization.WriteVarBytes(w, buf)
+		if err != nil {
+				return fmt.Errorf("InvokeCode PubKeys Serialize failed: %s", err)
 		}
 	}
 	if err := self.Account.Serialize(w); err != nil {
-		return NewDetailErr(err, ErrNoCode, "InvokeCode Account Serialize failed.")
+			return fmt.Errorf("InvokeCode Account Serialize failed: %s", err)
 	}
 
 	return nil
@@ -64,14 +67,16 @@ func (self *Vote) Deserialize(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	self.PubKeys = make([]*crypto.PubKey, length)
+	self.PubKeys = make([]keypair.PublicKey, length)
 	for i := 0; i < int(length); i++ {
-		pubkey := new(crypto.PubKey)
-		err := pubkey.DeSerialize(r)
+		buf, err := serialization.ReadVarBytes(r)
 		if err != nil {
 			return err
 		}
-		self.PubKeys[i] = pubkey
+		self.PubKeys[i], err = keypair.DeserializePublicKey(buf)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = self.Account.Deserialize(r)

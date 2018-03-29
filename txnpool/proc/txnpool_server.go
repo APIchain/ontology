@@ -37,7 +37,7 @@ type txStats struct {
 
 type serverPendingTx struct {
 	tx     *tx.Transaction // Pending tx
-	sender *actor.PID      // Indicate which sender tx is from
+	sender tc.SenderType   // Indicate which sender tx is from
 }
 
 type pendingBlock struct {
@@ -98,7 +98,7 @@ func (s *TXPoolServer) init(num uint8) {
 		stopCh:         make(chan bool),
 	}
 
-	s.stats = txStats{count: make([]uint64, tc.MAXSTATS-1)}
+	s.stats = txStats{count: make([]uint64, tc.MaxStats-1)}
 
 	// Create the given concurrent workers
 	s.workers = make([]txPoolWorker, num)
@@ -109,16 +109,6 @@ func (s *TXPoolServer) init(num uint8) {
 		s.workers[i].init(i, s)
 		go s.workers[i].start()
 	}
-}
-
-func (s *TXPoolServer) sendRsp2Client(sender *actor.PID,
-	hash common.Uint256, err errors.ErrCode) {
-
-	res := &tc.TxRsp{
-		Hash:    hash,
-		ErrCode: err,
-	}
-	sender.Request(res, s.GetPID(tc.TxActor))
 }
 
 func (s *TXPoolServer) checkPendingBlockOk(hash common.Uint256,
@@ -168,6 +158,12 @@ func (s *TXPoolServer) checkPendingBlockOk(hash common.Uint256,
 	}
 }
 
+func (s *TXPoolServer) getPendingListSize() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.allPendingTxs)
+}
+
 func (s *TXPoolServer) removePendingTx(hash common.Uint256,
 	err errors.ErrCode) {
 
@@ -178,8 +174,12 @@ func (s *TXPoolServer) removePendingTx(hash common.Uint256,
 		s.mu.Unlock()
 		return
 	}
-	if pt.sender != nil {
-		s.sendRsp2Client(pt.sender, hash, err)
+
+	if err == errors.ErrNoError && pt.sender == tc.HttpSender {
+		pid := s.GetPID(tc.NetActor)
+		if pid != nil {
+			pid.Tell(pt.tx)
+		}
 	}
 
 	delete(s.allPendingTxs, hash)
@@ -192,7 +192,7 @@ func (s *TXPoolServer) removePendingTx(hash common.Uint256,
 }
 
 func (s *TXPoolServer) setPendingTx(tx *tx.Transaction,
-	sender *actor.PID) bool {
+	sender tc.SenderType) bool {
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -211,8 +211,8 @@ func (s *TXPoolServer) setPendingTx(tx *tx.Transaction,
 	return true
 }
 
-func (s *TXPoolServer) assginTXN2Worker(tx *tx.Transaction,
-	sender *actor.PID) (assign bool) {
+func (s *TXPoolServer) assignTxToWorker(tx *tx.Transaction,
+	sender tc.SenderType) (assign bool) {
 
 	defer func() {
 		if recover() != nil {
@@ -226,9 +226,6 @@ func (s *TXPoolServer) assginTXN2Worker(tx *tx.Transaction,
 
 	if ok := s.setPendingTx(tx, sender); !ok {
 		s.increaseStats(tc.DuplicateStats)
-		if sender != nil {
-			s.sendRsp2Client(sender, tx.Hash(), errors.ErrDuplicatedTx)
-		}
 		return false
 	}
 	// Add the rcvTxn to the worker
@@ -244,7 +241,7 @@ func (s *TXPoolServer) assginTXN2Worker(tx *tx.Transaction,
 	return true
 }
 
-func (s *TXPoolServer) assignRsp2Worker(rsp *types.CheckResponse) (
+func (s *TXPoolServer) assignRspToWorker(rsp *types.CheckResponse) (
 	assign bool) {
 
 	defer func() {
@@ -275,7 +272,7 @@ func (s *TXPoolServer) assignRsp2Worker(rsp *types.CheckResponse) (
 }
 
 func (s *TXPoolServer) GetPID(actor tc.ActorType) *actor.PID {
-	if actor < tc.TxActor || actor >= tc.MAXACTOR {
+	if actor < tc.TxActor || actor >= tc.MaxActor {
 		return nil
 	}
 
@@ -344,6 +341,22 @@ func (s *TXPoolServer) getNextValidatorPIDs() []*actor.PID {
 		ret = append(ret, v[next].Sender)
 	}
 	return ret
+}
+
+func (s *TXPoolServer) getNextValidatorPID(key types.VerifyType) *actor.PID {
+	s.validators.Lock()
+	defer s.validators.Unlock()
+
+	length := len(s.validators.entries[key])
+	if length == 0 {
+		return nil
+	}
+
+	entries := s.validators.entries[key]
+	lastIdx := s.validators.state.state[key]
+	next := (lastIdx + 1) % length
+	s.validators.state.state[key] = next
+	return entries[next].Sender
 }
 
 func (s *TXPoolServer) Stop() {
@@ -439,6 +452,25 @@ func (s *TXPoolServer) getTransactionCount() int {
 	return s.txPool.GetTransactionCount()
 }
 
+func (s *TXPoolServer) reVerifyStateful(tx *tx.Transaction, sender tc.SenderType) {
+	if ok := s.setPendingTx(tx, sender); !ok {
+		s.increaseStats(tc.DuplicateStats)
+		return
+	}
+
+	// Add the rcvTxn to the worker
+	lb := make(tc.LBSlice, s.workersNum)
+	for i := uint8(0); i < s.workersNum; i++ {
+		entry := tc.LB{Size: len(s.workers[i].pendingTxList),
+			WorkerID: i,
+		}
+		lb[i] = entry
+	}
+
+	sort.Sort(lb)
+	s.workers[lb[0].WorkerID].stfTxCh <- tx
+}
+
 func (s *TXPoolServer) sendBlkResult2Consensus() {
 	rsp := &tc.VerifyBlockRsp{
 		TxnPool: make([]*tc.VerifyTxResult,
@@ -483,7 +515,7 @@ func (s *TXPoolServer) verifyBlock(req *tc.VerifyBlockReq, sender *actor.PID) {
 		 */
 		ret := s.txPool.GetTxStatus(t.Hash())
 		if ret == nil {
-			s.assginTXN2Worker(t, nil)
+			s.assignTxToWorker(t, tc.NilSender)
 			s.pendingBlock.unProcessedTxs[t.Hash()] = t
 			continue
 		}
@@ -509,7 +541,7 @@ func (s *TXPoolServer) verifyBlock(req *tc.VerifyBlockReq, sender *actor.PID) {
 		// Re-verify it
 		if !ok {
 			s.delTransaction(t)
-			s.assginTXN2Worker(t, nil)
+			s.reVerifyStateful(t, tc.NilSender)
 			s.pendingBlock.unProcessedTxs[t.Hash()] = t
 		}
 	}

@@ -26,13 +26,10 @@ import (
 	"github.com/Ontology/common/log"
 	"github.com/Ontology/core/payload"
 	"github.com/Ontology/core/types"
-	"github.com/Ontology/crypto"
-	"github.com/ontio/ontology-eventbus/actor"
 	tc "github.com/Ontology/txnpool/common"
 	tp "github.com/Ontology/txnpool/proc"
-	//"github.com/Ontology/validator/db"
-	//"github.com/Ontology/validator/statefull"
 	"github.com/Ontology/validator/stateless"
+	"github.com/ontio/ontology-eventbus/actor"
 	"sync"
 	"testing"
 	"time"
@@ -44,8 +41,7 @@ var (
 )
 
 func init() {
-	crypto.SetAlg("")
-	log.Init(log.Path, log.Stdout)
+	log.Init(log.PATH, log.Stdout)
 	topic = "TXN"
 
 	bookKeepingPayload := &payload.BookKeeping{
@@ -84,7 +80,7 @@ func Test_RCV(t *testing.T) {
 	var wg sync.WaitGroup
 
 	// Start txnpool server to receive msgs from p2p, consensus and valdiators
-	s = tp.NewTxPoolServer(tc.MAXWORKERNUM)
+	s = tp.NewTxPoolServer(tc.MAX_WORKER_NUM)
 
 	// Initialize an actor to handle the msgs from valdiators
 	rspActor := tp.NewVerifyRspActor(s)

@@ -23,11 +23,11 @@ import (
 	"time"
 
 	"github.com/Ontology/core/types"
-	"github.com/Ontology/crypto"
 	ontErrors "github.com/Ontology/errors"
-	"github.com/ontio/ontology-eventbus/actor"
 	netActor "github.com/Ontology/net/actor"
 	txpool "github.com/Ontology/txnpool/common"
+	"github.com/ontio/ontology-crypto/keypair"
+	"github.com/ontio/ontology-eventbus/actor"
 )
 
 type TxPoolActor struct {
@@ -72,7 +72,7 @@ func (self *P2PActor) Broadcast(msg interface{}) {
 	self.P2P.Tell(msg)
 }
 
-func (self *P2PActor) Transmit(target *crypto.PubKey, msg []byte) {
+func (self *P2PActor) Transmit(target *keypair.PublicKey, msg []byte) {
 	self.P2P.Tell(&netActor.TransmitConsensusMsgReq{
 		Target: target,
 		Msg:    msg,

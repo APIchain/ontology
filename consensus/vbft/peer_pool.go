@@ -23,12 +23,12 @@ import (
 	"time"
 
 	"github.com/Ontology/consensus/vbft/config"
-	"github.com/Ontology/crypto"
+	"github.com/ontio/ontology-crypto/keypair"
 )
 
 type Peer struct {
 	Index          uint32
-	PubKey         *crypto.PubKey
+	PubKey         *keypair.PublicKey
 	handShake      *peerHandshakeMsg
 	LatestInfo     *peerHeartbeatMsg // latest heartbeat msg
 	LastUpdateTime time.Time         // time received heartbeat from peer

@@ -27,7 +27,6 @@ import (
 	vconfig "github.com/Ontology/consensus/vbft/config"
 	"github.com/Ontology/core/ledger"
 	"github.com/Ontology/core/types"
-	"github.com/Ontology/crypto"
 )
 
 type ConsensusMsgPayload struct {
@@ -181,7 +180,7 @@ func (self *Server) constructProposalMsg(blkNum uint64, txs []*types.Transaction
 	for _, t := range txs {
 		txHash = append(txHash, t.Hash())
 	}
-	txRoot, err := crypto.ComputeRoot(txHash)
+	txRoot, err := ComputeRoot(txHash)
 	if err != nil {
 		return nil, fmt.Errorf("compute hash root: %s", err)
 	}

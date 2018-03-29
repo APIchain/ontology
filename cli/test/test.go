@@ -19,33 +19,36 @@
 package test
 
 import (
-	"fmt"
-	"os"
-
-	. "github.com/Ontology/cli/common"
-	"github.com/Ontology/http/base/rpc"
-	"github.com/urfave/cli"
 	"bytes"
 	"encoding/hex"
-	"math/big"
-	"time"
-	vmtypes "github.com/Ontology/vm/types"
-	"github.com/Ontology/account"
-	"github.com/Ontology/core/genesis"
-	"github.com/Ontology/crypto"
-	"github.com/Ontology/core/types"
-	"github.com/Ontology/common"
-	"github.com/Ontology/smartcontract/service/native/states"
 	"encoding/json"
+	"fmt"
+	"math/big"
+	"os"
+	"time"
+
+	"github.com/Ontology/account"
+	. "github.com/Ontology/cli/common"
+	"github.com/Ontology/common"
+	"github.com/Ontology/core/genesis"
+	"github.com/Ontology/core/signature"
+	"github.com/Ontology/core/types"
 	"github.com/Ontology/core/utils"
+	"github.com/Ontology/http/base/rpc"
+	"github.com/Ontology/smartcontract/service/native/states"
+	vmtypes "github.com/Ontology/vm/types"
+	"github.com/ontio/ontology-crypto/keypair"
+	"github.com/urfave/cli"
+	"encoding/binary"
+	"bufio"
 )
 
 func signTransaction(signer *account.Account, tx *types.Transaction) error {
 	hash := tx.Hash()
-	sign, _ := crypto.Sign(signer.PrivateKey, hash[:])
+	sign, _ := signature.Sign(signer.PrivateKey, hash[:])
 	tx.Sigs = append(tx.Sigs, &types.Sig{
-		PubKeys: []*crypto.PubKey{signer.PublicKey},
-		M: 1,
+		PubKeys: []keypair.PublicKey{signer.PublicKey},
+		M:       1,
 		SigData: [][]byte{sign},
 	})
 	return nil
@@ -54,11 +57,17 @@ func signTransaction(signer *account.Account, tx *types.Transaction) error {
 func testAction(c *cli.Context) (err error) {
 	txnNum := c.Int("num")
 	passwd := c.String("password")
+	genFile := c.Bool("gen")
 
 	acct := account.Open(account.WalletFileName, []byte(passwd))
-	acc, err := acct.GetDefaultAccount(); if err != nil {
+	acc, err := acct.GetDefaultAccount()
+	if err != nil {
 		fmt.Println("GetDefaultAccount error:", err)
 		os.Exit(1)
+	}
+	if genFile {
+		GenTransferFile(txnNum, acc, "transfer.txt")
+		return nil
 	}
 
 	transferTest(txnNum, acc)
@@ -66,12 +75,49 @@ func testAction(c *cli.Context) (err error) {
 	return nil
 }
 
-func transferTest(n int, acc *account.Account) {
-	if n <= 0 {
-		n  = 1
+func check(e error) {
+	if e != nil {
+		panic(e)
 	}
+}
+
+func Tx2Hex(tx *types.Transaction) string {
+	var buffer bytes.Buffer
+	tx.Serialize(&buffer)
+	return hex.EncodeToString(buffer.Bytes())
+}
+
+func GenTransferFile(n int,acc *account.Account, fileName string) {
+	f, err := os.Create(fileName)
+	check(err)
+	w := bufio.NewWriter(f)
+
+	defer func() {
+		w.Flush()
+		f.Close()
+	}()
 
 	for i := 0; i < n; i ++ {
+		to := acc.Address
+		binary.BigEndian.PutUint64(to[:], uint64(i))
+		tx := NewOntTransferTransaction(acc.Address, to, 1)
+		if err := signTransaction(acc, tx); err != nil {
+			fmt.Println("signTransaction error:", err)
+			os.Exit(1)
+		}
+
+		txhex := Tx2Hex(tx)
+		_, _ = w.WriteString(fmt.Sprintf("%x,%s\n", tx.Hash(), txhex))
+	}
+
+}
+
+func transferTest(n int, acc *account.Account) {	
+	if n <= 0 {
+		n = 1
+	}
+
+	for i := 0; i < n; i++ {
 		tx := NewOntTransferTransaction(acc.Address, acc.Address, int64(i))
 		if err := signTransaction(acc, tx); err != nil {
 			fmt.Println("signTransaction error:", err)
@@ -104,12 +150,11 @@ func transferTest(n int, acc *account.Account) {
 	}
 }
 
-
 func NewOntTransferTransaction(from, to common.Address, value int64) *types.Transaction {
 	var sts []*states.State
 	sts = append(sts, &states.State{
-		From: from,
-		To: to,
+		From:  from,
+		To:    to,
 		Value: big.NewInt(value),
 	})
 	transfers := new(states.Transfers)
@@ -124,8 +169,8 @@ func NewOntTransferTransaction(from, to common.Address, value int64) *types.Tran
 
 	cont := &states.Contract{
 		Address: genesis.OntContractAddress,
-		Method: "transfer",
-		Args: bf.Bytes(),
+		Method:  "transfer",
+		Args:    bf.Bytes(),
 	}
 
 	ff := new(bytes.Buffer)
@@ -136,7 +181,7 @@ func NewOntTransferTransaction(from, to common.Address, value int64) *types.Tran
 
 	tx := utils.NewInvokeTransaction(vmtypes.VmCode{
 		VmType: vmtypes.Native,
-		Code: ff.Bytes(),
+		Code:   ff.Bytes(),
 	})
 
 	tx.Nonce = uint32(time.Now().Unix())
@@ -159,8 +204,13 @@ func NewCommand() *cli.Command {
 			cli.StringFlag{
 				Name:  "password, p",
 				Usage: "wallet password",
-				Value:"passwordtest",
+				Value: "passwordtest",
 			},
+			cli.BoolFlag{
+				Name:  "gen, g",
+				Usage: "gen transaction to file",
+
+		},
 		},
 		Action: testAction,
 		OnUsageError: func(c *cli.Context, err error, isSubcommand bool) error {

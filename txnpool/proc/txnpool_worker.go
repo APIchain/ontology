@@ -44,6 +44,7 @@ type txPoolWorker struct {
 	mu            sync.RWMutex
 	workId        uint8                         // Worker ID
 	rcvTXCh       chan *tx.Transaction          // The channel of receive transaction
+	stfTxCh       chan *tx.Transaction          // The channel of txs to be re-verified stateful
 	rspCh         chan *types.CheckResponse     // The channel of verified response
 	server        *TXPoolServer                 // The txn pool server pointer
 	timer         *time.Timer                   // The timer of reverifying
@@ -52,9 +53,10 @@ type txPoolWorker struct {
 }
 
 func (worker *txPoolWorker) init(workID uint8, s *TXPoolServer) {
-	worker.rcvTXCh = make(chan *tx.Transaction, tc.MAXPENDINGTXN)
+	worker.rcvTXCh = make(chan *tx.Transaction, tc.MAX_PENDING_TXN)
+	worker.stfTxCh = make(chan *tx.Transaction, tc.MAX_PENDING_TXN)
 	worker.pendingTxList = make(map[common.Uint256]*pendingTx)
-	worker.rspCh = make(chan *types.CheckResponse, tc.MAXPENDINGTXN)
+	worker.rspCh = make(chan *types.CheckResponse, tc.MAX_PENDING_TXN)
 	worker.stopCh = make(chan bool)
 	worker.workId = workID
 	worker.server = s
@@ -107,7 +109,7 @@ func (worker *txPoolWorker) handleRsp(rsp *types.CheckResponse) {
 		pt.ret = append(pt.ret, retAttr)
 	}
 
-	if pt.flag&0xf == tc.VERIFYMASK {
+	if pt.flag&0xf == tc.VERIFY_MASK {
 		worker.putTxPool(pt)
 		delete(worker.pendingTxList, rsp.Hash)
 	}
@@ -127,9 +129,9 @@ func (worker *txPoolWorker) handleTimeoutEvent() {
 	 * resend them to the validators
 	 */
 	for k, v := range worker.pendingTxList {
-		if v.flag&0xf != tc.VERIFYMASK && (time.Now().Sub(v.valTime)/time.Second) >=
-			tc.EXPIREINTERVAL {
-			if v.retries < tc.MAXRETRIES {
+		if v.flag&0xf != tc.VERIFY_MASK && (time.Now().Sub(v.valTime)/time.Second) >=
+			tc.EXPIRE_INTERVAL {
+			if v.retries < tc.MAX_RETRIES {
 				worker.reVerifyTx(k)
 				v.retries++
 			} else {
@@ -199,7 +201,7 @@ func (worker *txPoolWorker) reVerifyTx(txHash common.Uint256) {
 		return
 	}
 
-	if pt.flag&0xf != tc.VERIFYMASK {
+	if pt.flag&0xf != tc.VERIFY_MASK {
 		worker.sendReq2Validator(pt.req)
 	}
 
@@ -231,8 +233,58 @@ func (worker *txPoolWorker) sendReq2Validator(req *types.CheckTx) (send bool) {
 	return true
 }
 
+func (worker *txPoolWorker) sendReq2StatefulV(req *types.CheckTx) {
+	rspPid := worker.server.GetPID(tc.VerifyRspActor)
+	if rspPid == nil {
+		log.Info("VerifyRspActor not exist")
+		return
+	}
+
+	pid := worker.server.getNextValidatorPID(types.Statefull)
+	log.Info("worker send tx to the stateful")
+	if pid == nil {
+		return
+	}
+
+	pid.Request(req, rspPid)
+
+}
+
+func (worker *txPoolWorker) verifyStateful(tx *tx.Transaction) {
+	req := &types.CheckTx{
+		WorkerId: worker.workId,
+		Tx:       *tx,
+	}
+
+	// Construct the pending transaction
+	pt := &pendingTx{
+		tx:      tx,
+		worker:  worker,
+		req:     req,
+		retries: 0,
+		valTime: time.Now(),
+	}
+
+	retAttr := &tc.TXAttr{
+		Height:  0,
+		Type:    types.Statefull,
+		ErrCode: errors.ErrNoError,
+	}
+
+	pt.ret = append(pt.ret, retAttr)
+	// Since the signature has been already verified, mark stateless as true
+	pt.flag |= tc.STATELESS_MASK
+
+	// Add it to the pending transaction list
+	worker.mu.Lock()
+	worker.pendingTxList[tx.Hash()] = pt
+	worker.mu.Unlock()
+
+	worker.sendReq2StatefulV(req)
+}
+
 func (worker *txPoolWorker) start() {
-	worker.timer = time.NewTimer(time.Second * tc.EXPIREINTERVAL)
+	worker.timer = time.NewTimer(time.Second * tc.EXPIRE_INTERVAL)
 	for {
 		select {
 		case <-worker.stopCh:
@@ -243,10 +295,14 @@ func (worker *txPoolWorker) start() {
 				// Verify rcvTxn
 				worker.verifyTx(rcvTx)
 			}
+		case stfTx, ok := <-worker.stfTxCh:
+			if ok {
+				worker.verifyStateful(stfTx)
+			}
 		case <-worker.timer.C:
 			worker.handleTimeoutEvent()
 			worker.timer.Stop()
-			worker.timer.Reset(time.Second * tc.EXPIREINTERVAL)
+			worker.timer.Reset(time.Second * tc.EXPIRE_INTERVAL)
 		case rsp, ok := <-worker.rspCh:
 			if ok {
 				/* Handle the response from validator, if all of cases
@@ -264,6 +320,9 @@ func (worker *txPoolWorker) stop() {
 	}
 	if worker.rcvTXCh != nil {
 		close(worker.rcvTXCh)
+	}
+	if worker.stfTxCh != nil {
+		close(worker.stfTxCh)
 	}
 	if worker.rspCh != nil {
 		close(worker.rspCh)

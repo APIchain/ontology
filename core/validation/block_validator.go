@@ -23,9 +23,9 @@ import (
 	"fmt"
 
 	"github.com/Ontology/core/ledger"
+	"github.com/Ontology/core/signature"
 	"github.com/Ontology/core/types"
-	"github.com/Ontology/crypto"
-	. "github.com/Ontology/errors"
+	ontError "github.com/Ontology/errors"
 )
 
 func VerifyBlock(block *types.Block, ld *ledger.Ledger, completely bool) error {
@@ -36,14 +36,14 @@ func VerifyBlock(block *types.Block, ld *ledger.Ledger, completely bool) error {
 
 	m := len(header.Bookkeepers) - (len(header.Bookkeepers)-1)/3
 	hash := block.Hash()
-	err := crypto.VerifyMultiSignature(hash[:], header.Bookkeepers, m, header.SigData)
+	err := signature.VerifyMultiSignature(hash[:], header.Bookkeepers, m, header.SigData)
 	if err != nil {
 		return err
 	}
 
 	prevHeader, err := ld.GetHeaderByHash(block.Header.PrevBlockHash)
 	if err != nil {
-		return NewDetailErr(err, ErrNoCode, "[BlockValidator], Cannnot find prevHeader..")
+		return fmt.Errorf("[BlockValidator], Cannnot find prevHeader: %s", err)
 	}
 
 	err = VerifyHeader(block.Header, prevHeader)
@@ -78,11 +78,11 @@ func VerifyBlock(block *types.Block, ld *ledger.Ledger, completely bool) error {
 			}
 		*/
 		for _, txVerify := range block.Transactions {
-			if errCode := VerifyTransaction(txVerify); errCode != ErrNoError {
+			if errCode := VerifyTransaction(txVerify); errCode != ontError.ErrNoError {
 				return errors.New(fmt.Sprintf("VerifyTransaction failed when verifiy block"))
 			}
 
-			if errCode := VerifyTransactionWithLedger(txVerify, ld); errCode != ErrNoError {
+			if errCode := VerifyTransactionWithLedger(txVerify, ld); errCode != ontError.ErrNoError {
 				return errors.New(fmt.Sprintf("VerifyTransaction failed when verifiy block"))
 			}
 		}
@@ -97,15 +97,15 @@ func VerifyHeader(header, prevHeader *types.Header) error {
 	}
 
 	if prevHeader == nil {
-		return NewDetailErr(errors.New("[BlockValidator] error"), ErrNoCode, "[BlockValidator], Cannnot find previous block.")
+		return errors.New("[BlockValidator], Cannnot find previous block.")
 	}
 
 	if prevHeader.Height+1 != header.Height {
-		return NewDetailErr(errors.New("[BlockValidator] error"), ErrNoCode, "[BlockValidator], block height is incorrect.")
+		return errors.New("[BlockValidator], block height is incorrect.")
 	}
 
 	if prevHeader.Timestamp >= header.Timestamp {
-		return NewDetailErr(errors.New("[BlockValidator] error"), ErrNoCode, "[BlockValidator], block timestamp is incorrect.")
+		return errors.New("[BlockValidator], block timestamp is incorrect.")
 	}
 
 	address, err := types.AddressFromBookkeepers(header.Bookkeepers)

@@ -26,8 +26,9 @@ import (
 	. "github.com/Ontology/common"
 	vconfig "github.com/Ontology/consensus/vbft/config"
 	"github.com/Ontology/core/types"
-	"github.com/Ontology/crypto"
+	crypto "github.com/ontio/ontology-crypto/keypair"
 	"github.com/Ontology/common/serialization"
+	"github.com/ontio/ontology-crypto/signature"
 )
 
 type MsgType uint8
@@ -49,7 +50,7 @@ const (
 
 type ConsensusMsg interface {
 	Type() MsgType
-	Verify(pub *crypto.PubKey) error
+	Verify(pub *crypto.PublicKey) error
 	GetBlockNum() uint64
 	Serialize() ([]byte, error)
 }
@@ -62,7 +63,7 @@ func (msg *blockProposalMsg) Type() MsgType {
 	return blockProposalMessage
 }
 
-func (msg *blockProposalMsg) Verify(pub *crypto.PubKey) error {
+func (msg *blockProposalMsg) Verify(pub *crypto.PublicKey) error {
 
 	// FIXME
 
@@ -116,18 +117,23 @@ func (msg *blockEndorseMsg) Type() MsgType {
 	return blockEndorseMessage
 }
 
-func (msg *blockEndorseMsg) Verify(pub *crypto.PubKey) error {
-	sig := msg.Sig
+func (msg *blockEndorseMsg) Verify(pub *crypto.PublicKey) error {
+	sigData := msg.Sig
 	msg.Sig = nil
 
 	defer func() {
-		msg.Sig = sig
+		msg.Sig = sigData
 	}()
+
+	sig, err := signature.Deserialize(sigData)
+	if err != nil {
+		return fmt.Errorf("failed to deserialize endorse msg sig: %s", err)
+	}
 
 	if data, err := msg.Serialize(); err != nil {
 		return fmt.Errorf("failed to serialize endorse msg: %s", err)
-	} else if err := crypto.Verify(*pub, data, sig); err != nil {
-		return fmt.Errorf("failed to verify endorse msg: %s", err)
+	} else if !signature.Verify(*pub, data, sig) {
+		return fmt.Errorf("failed to verify endorse msg")
 	}
 
 	return nil
@@ -155,18 +161,23 @@ func (msg *blockCommitMsg) Type() MsgType {
 	return blockCommitMessage
 }
 
-func (msg *blockCommitMsg) Verify(pub *crypto.PubKey) error {
-	sig := msg.Sig
+func (msg *blockCommitMsg) Verify(pub *crypto.PublicKey) error {
+	sigData := msg.Sig
 	msg.Sig = nil
 
 	defer func() {
-		msg.Sig = sig
+		msg.Sig = sigData
 	}()
+
+	sig, err := signature.Deserialize(sigData)
+	if err != nil {
+		return fmt.Errorf("failed to deserialize commit msg sig: %s", err)
+	}
 
 	if data, err := msg.Serialize(); err != nil {
 		return fmt.Errorf("failed to serialize commit msg: %s", err)
-	} else if err := crypto.Verify(*pub, data, sig); err != nil {
-		return fmt.Errorf("failed to verify commit msg: %s", err)
+	} else if !signature.Verify(*pub, data, sig) {
+		return fmt.Errorf("failed to verify commit msg")
 	}
 
 	return nil
@@ -192,18 +203,23 @@ func (msg *peerHandshakeMsg) Type() MsgType {
 	return peerHandshakeMessage
 }
 
-func (msg *peerHandshakeMsg) Verify(pub *crypto.PubKey) error {
-	sig := msg.Sig
+func (msg *peerHandshakeMsg) Verify(pub *crypto.PublicKey) error {
+	sigData := msg.Sig
 	msg.Sig = nil
 
 	defer func() {
-		msg.Sig = sig
+		msg.Sig = sigData
 	}()
+
+	sig, err := signature.Deserialize(sigData)
+	if err != nil {
+		return fmt.Errorf("failed to deserialize handshake msg sig: %s", err)
+	}
 
 	if data, err := msg.Serialize(); err != nil {
 		return fmt.Errorf("failed to serialize handshake msg: %s", err)
-	} else if err := crypto.Verify(*pub, data, sig); err != nil {
-		return fmt.Errorf("failed to verify handshake msg: %s, data: %v", err, data)
+	} else if !signature.Verify(*pub, data, sig) {
+		return fmt.Errorf("failed to verify handshake msg")
 	}
 
 	return nil
@@ -229,18 +245,23 @@ func (msg *peerHeartbeatMsg) Type() MsgType {
 	return peerHeartbeatMessage
 }
 
-func (msg *peerHeartbeatMsg) Verify(pub *crypto.PubKey) error {
-	sig := msg.Sig
+func (msg *peerHeartbeatMsg) Verify(pub *crypto.PublicKey) error {
+	sigData := msg.Sig
 	msg.Sig = nil
 
 	defer func() {
-		msg.Sig = sig
+		msg.Sig = sigData
 	}()
+
+	sig, err := signature.Deserialize(sigData)
+	if err != nil {
+		return fmt.Errorf("failed to deserialize heartbeat msg sig: %s", err)
+	}
 
 	if data, err := msg.Serialize(); err != nil {
 		return fmt.Errorf("failed to serialize heartbeat msg: %s", err)
-	} else if err := crypto.Verify(*pub, data, sig); err != nil {
-		return fmt.Errorf("failed to verify heartbeat msg: %s", err)
+	} else if !signature.Verify(*pub, data, sig) {
+		return fmt.Errorf("failed to verify heartbeat msg")
 	}
 
 	return nil
@@ -263,18 +284,23 @@ func (msg *BlockInfoFetchMsg) Type() MsgType {
 	return blockInfoFetchMessage
 }
 
-func (msg *BlockInfoFetchMsg) Verify(pub *crypto.PubKey) error {
-	sig := msg.Sig
+func (msg *BlockInfoFetchMsg) Verify(pub *crypto.PublicKey) error {
+	sigData := msg.Sig
 	msg.Sig = nil
 
 	defer func() {
-		msg.Sig = sig
+		msg.Sig = sigData
 	}()
+
+	sig, err := signature.Deserialize(sigData)
+	if err != nil {
+		return fmt.Errorf("failed to deserialize blockInfoFetch msg sig: %s", err)
+	}
 
 	if data, err := msg.Serialize(); err != nil {
 		return fmt.Errorf("failed to serialize blockinfo fetch msg: %s", err)
-	} else if err := crypto.Verify(*pub, data, sig); err != nil {
-		return fmt.Errorf("failed to verify blockinfo fetch msg: %s", err)
+	} else if !signature.Verify(*pub, data, sig) {
+		return fmt.Errorf("failed to verify blockinfo fetch msg")
 	}
 
 	return nil
@@ -303,18 +329,23 @@ func (msg *BlockInfoFetchRespMsg) Type() MsgType {
 	return blockInfoFetchRespMessage
 }
 
-func (msg *BlockInfoFetchRespMsg) Verify(pub *crypto.PubKey) error {
-	sig := msg.Sig
+func (msg *BlockInfoFetchRespMsg) Verify(pub *crypto.PublicKey) error {
+	sigData := msg.Sig
 	msg.Sig = nil
 
 	defer func() {
-		msg.Sig = sig
+		msg.Sig = sigData
 	}()
+
+	sig, err := signature.Deserialize(sigData)
+	if err != nil {
+		return fmt.Errorf("failed to deserialize blockInfoFetchResp msg sig: %s", err)
+	}
 
 	if data, err := msg.Serialize(); err != nil {
 		return fmt.Errorf("failed to serialize blockinfo resp msg: %s", err)
-	} else if err := crypto.Verify(*pub, data, sig); err != nil {
-		return fmt.Errorf("failed to verify blockinfo resp msg: %s", err)
+	} else if !signature.Verify(*pub, data, sig) {
+		return fmt.Errorf("failed to verify blockinfo resp msg")
 	}
 
 	return nil
@@ -338,17 +369,22 @@ func (msg *blockFetchMsg) Type() MsgType {
 	return blockFetchMessage
 }
 
-func (msg *blockFetchMsg) Verify(pub *crypto.PubKey) error {
-	sig := msg.Sig
+func (msg *blockFetchMsg) Verify(pub *crypto.PublicKey) error {
+	sigData := msg.Sig
 	msg.Sig = nil
 
 	defer func() {
-		msg.Sig = sig
+		msg.Sig = sigData
 	}()
+
+	sig, err := signature.Deserialize(sigData)
+	if err != nil {
+		return fmt.Errorf("failed to deserialize blockFetch msg sig: %s", err)
+	}
 
 	if data, err := msg.Serialize(); err != nil {
 		return fmt.Errorf("failed to serialize blockfetch msg: %s", err)
-	} else if err := crypto.Verify(*pub, data, sig); err != nil {
+	} else if !signature.Verify(*pub, data, sig) {
 		return fmt.Errorf("failed to verify blockfetch msg: %s", err)
 	}
 
@@ -374,18 +410,23 @@ func (msg *BlockFetchRespMsg) Type() MsgType {
 	return blockFetchRespMessage
 }
 
-func (msg *BlockFetchRespMsg) Verify(pub *crypto.PubKey) error {
-	sig := msg.Sig
+func (msg *BlockFetchRespMsg) Verify(pub *crypto.PublicKey) error {
+	sigData := msg.Sig
 	msg.Sig = nil
 
 	defer func() {
-		msg.Sig = sig
+		msg.Sig = sigData
 	}()
+
+	sig, err := signature.Deserialize(sigData)
+	if err != nil {
+		return fmt.Errorf("failed to deserialize blockFetchResp msg sig: %s", err)
+	}
 
 	if data, err := msg.Serialize(); err != nil {
 		return fmt.Errorf("failed to serialize blockfetch rsp msg: %s", err)
-	} else if err := crypto.Verify(*pub, data, sig); err != nil {
-		return fmt.Errorf("failed to verify blockfetch rsp msg: %s", err)
+	} else if !signature.Verify(*pub, data, sig) {
+		return fmt.Errorf("failed to verify blockfetch rsp msg")
 	}
 
 	return nil
@@ -446,18 +487,23 @@ func (msg *proposalFetchMsg) Type() MsgType {
 	return proposalFetchMessage
 }
 
-func (msg *proposalFetchMsg) Verify(pub *crypto.PubKey) error {
-	sig := msg.Sig
+func (msg *proposalFetchMsg) Verify(pub *crypto.PublicKey) error {
+	sigData := msg.Sig
 	msg.Sig = nil
 
 	defer func() {
-		msg.Sig = sig
+		msg.Sig = sigData
 	}()
 
+	sig, err := signature.Deserialize(sigData)
+	if err != nil {
+		return fmt.Errorf("failed to deserialize proposalFetch msg sig: %s", err)
+	}
+
 	if data, err := msg.Serialize(); err != nil {
-		return fmt.Errorf("failed to serialize blockfetch msg: %s", err)
-	} else if err := crypto.Verify(*pub, data, sig); err != nil {
-		return fmt.Errorf("failed to verify blockfetch msg: %s", err)
+		return fmt.Errorf("failed to serialize proposalFetch msg: %s", err)
+	} else if !signature.Verify(*pub, data, sig) {
+		return fmt.Errorf("failed to verify proposalFetch msg")
 	}
 
 	return nil

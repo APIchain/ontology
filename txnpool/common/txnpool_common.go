@@ -25,15 +25,16 @@ import (
 )
 
 const (
-	MAXCAPACITY    = 100140                       // The tx pool's capacity that holds the verified txs
-	MAXPENDINGTXN  = 2048 * 10                    // The max length of pending txs
-	MAXWORKERNUM   = 2                            // The max concurrent workers
-	MAXRCVTXNLEN   = MAXWORKERNUM * MAXPENDINGTXN // The max length of the queue that server can hold
-	MAXRETRIES     = 0                            // The retry times to verify tx
-	EXPIREINTERVAL = 9                            // The timeout that verify tx
-	STATELESSMASK  = 0x1                          // The mask of stateless validator
-	STATEFULMASK   = 0x2                          // The mask of stateful validator
-	VERIFYMASK     = STATELESSMASK | STATEFULMASK
+	MAX_CAPACITY    = 100140                           // The tx pool's capacity that holds the verified txs
+	MAX_PENDING_TXN = 2048 * 10                        // The max length of pending txs
+	MAX_WORKER_NUM  = 2                                // The max concurrent workers
+	MAX_RCV_TXN_LEN = MAX_WORKER_NUM * MAX_PENDING_TXN // The max length of the queue that server can hold
+	MAX_RETRIES     = 0                                // The retry times to verify tx
+	EXPIRE_INTERVAL = 9                                // The timeout that verify tx
+	STATELESS_MASK  = 0x1                              // The mask of stateless validator
+	STATEFUL_MASK   = 0x2                              // The mask of stateful validator
+	VERIFY_MASK     = STATELESS_MASK | STATEFUL_MASK
+	MAX_LIMITATION  = 10000
 )
 
 type ActorType uint8
@@ -43,9 +44,30 @@ const (
 	TxActor                  // Actor that handles new transaction
 	TxPoolActor              // Actor that handles consensus msg
 	VerifyRspActor           // Actor that handles the response from valdiators
-
-	MAXACTOR
+	NetActor                 // Actor to send msg to the net actor
+	MaxActor
 )
+
+type SenderType uint8
+
+const (
+	NilSender  SenderType = iota
+	NetSender             // Net sends tx req
+	HttpSender            // Http sends tx req
+)
+
+func (sender SenderType) Sender() string {
+	switch sender {
+	case NilSender:
+		return "nil sender"
+	case NetSender:
+		return "net sender"
+	case HttpSender:
+		return "http sender"
+	default:
+		return "unknown sender"
+	}
+}
 
 type TxnStatsType uint8
 
@@ -58,12 +80,17 @@ const (
 	SigErrStats                 // The count that the transactions' signature error
 	StateErrStats               // The count that the transactions are invalid in database
 
-	MAXSTATS
+	MaxStats
 )
 
 type TxStatus struct {
 	Hash  common.Uint256 // transaction hash
 	Attrs []*TXAttr      // transaction's status
+}
+
+type TxReq struct {
+	Tx     *types.Transaction
+	Sender SenderType
 }
 
 type TxRsp struct {

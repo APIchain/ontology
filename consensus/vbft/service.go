@@ -33,10 +33,10 @@ import (
 	vconfig "github.com/Ontology/consensus/vbft/config"
 	"github.com/Ontology/core/payload"
 	"github.com/Ontology/core/types"
-	"github.com/Ontology/crypto"
 	"github.com/Ontology/events"
 	"github.com/Ontology/events/message"
 	p2pmsg "github.com/Ontology/net/message"
+	"github.com/ontio/ontology-crypto/keypair"
 	"github.com/ontio/ontology-eventbus/actor"
 )
 
@@ -75,7 +75,7 @@ type Server struct {
 	ledger    *actorTypes.LedgerActor
 	pid       *actor.PID
 
-	privateKey []byte
+	privateKey keypair.PrivateKey
 	log        *log.Logger
 
 	// some config
@@ -210,7 +210,7 @@ func (self *Server) handleBlockPersistCompleted(block *types.Block) {
 }
 
 func (self *Server) NewConsensusPayload(payload *p2pmsg.ConsensusPayload) {
-	peerID, err := vconfig.PubkeyID(payload.Owner)
+	peerID, err := vconfig.PubkeyID(&payload.Owner)
 	if err != nil {
 		self.log.Errorf("failed to get peer ID for pubKey: %v", payload.Owner)
 	}
@@ -333,9 +333,9 @@ func (self *Server) start() error {
 		self.log.Infof("added peer: %s", p.ID.String())
 	}
 
-	id, _ := vconfig.PubkeyID(self.account.PublicKey)
+	id, _ := vconfig.PubkeyID(&self.account.PublicKey)
 	self.Index, _ = self.peerPool.GetPeerIndex(id)
-	self.sub.Subscribe(message.TopicSaveBlockComplete)
+	self.sub.Subscribe(message.TOPIC_SAVE_BLOCK_COMPLETE)
 	go self.syncer.run()
 	go self.stateMgr.run()
 	go self.msgSendLoop()
@@ -364,11 +364,11 @@ func (self *Server) start() error {
 func (self *Server) stop() error {
 
 	// TODO
-	self.sub.Unsubscribe(message.TopicSaveBlockComplete)
+	self.sub.Unsubscribe(message.TOPIC_SAVE_BLOCK_COMPLETE)
 	return nil
 }
 
-func (self *Server) run(peerPubKey *crypto.PubKey) error {
+func (self *Server) run(peerPubKey *keypair.PublicKey) error {
 	peerID, err := vconfig.PubkeyID(peerPubKey)
 	if err != nil {
 		return fmt.Errorf("failed to get peer ID for pubKey: %v", peerPubKey)
@@ -1831,7 +1831,7 @@ func (self *Server) handleProposalTimeout(evt *TimerEvent) error {
 	return nil
 }
 
-func (self *Server) initHandshake(peerIdx uint32, peerPubKey *crypto.PubKey) error {
+func (self *Server) initHandshake(peerIdx uint32, peerPubKey *keypair.PublicKey) error {
 	msg, err := self.constructHandshakeMsg()
 	if err != nil {
 		return fmt.Errorf("build handshake msg: %s", err)
