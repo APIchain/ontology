@@ -22,6 +22,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+
 	"github.com/Ontology/common"
 	"github.com/Ontology/common/serialization"
 	scom "github.com/Ontology/core/store/common"
@@ -111,6 +112,9 @@ func (this *BlockStore) GetBlock(blockHash common.Uint256) (*types.Block, error)
 	header, txHashes, err := this.loadHeaderWithTx(blockHash)
 	if err != nil {
 		return nil, err
+	}
+	if header == nil {
+		return nil, nil
 	}
 	txList := make([]*types.Transaction, 0, len(txHashes))
 	for _, txHash := range txHashes {
@@ -310,7 +314,7 @@ func (this *BlockStore) SaveHeaderIndexList(startIndex uint32, indexList []commo
 }
 
 func (this *BlockStore) GetBlockHash(height uint32) (common.Uint256, error) {
-	key:= this.getBlockHashKey(height)
+	key := this.getBlockHashKey(height)
 	value, err := this.store.Get(key)
 	if err != nil {
 		if err == leveldb.ErrNotFound {
@@ -325,7 +329,7 @@ func (this *BlockStore) GetBlockHash(height uint32) (common.Uint256, error) {
 	return blockHash, nil
 }
 
-func (this *BlockStore) SaveBlockHash(height uint32, blockHash common.Uint256){
+func (this *BlockStore) SaveBlockHash(height uint32, blockHash common.Uint256) {
 	key := this.getBlockHashKey(height)
 	this.store.BatchPut(key, blockHash.ToArray())
 }

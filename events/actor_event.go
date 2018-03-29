@@ -19,9 +19,10 @@
 package events
 
 import (
+	"fmt"
+
 	"github.com/ontio/ontology-eventbus/actor"
 	"github.com/ontio/ontology-eventbus/eventhub"
-	"fmt"
 )
 
 var DefEvtHub *eventhub.EventHub
@@ -33,7 +34,7 @@ func Init() {
 	DefEvtHub = eventhub.GlobalEventHub
 	defPublisherProps = actor.FromFunc(func(context actor.Context) {})
 	var err error
-	DefPublisherPID , err = actor.SpawnNamed(defPublisherProps, "DefPublisherActor")
+	DefPublisherPID, err = actor.SpawnNamed(defPublisherProps, "DefPublisherActor")
 	if err != nil {
 		panic(fmt.Errorf("DefPublisherPID SpawnNamed error:%s", err))
 	}

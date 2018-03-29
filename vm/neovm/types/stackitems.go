@@ -20,6 +20,7 @@ package types
 
 import (
 	"math/big"
+
 	"github.com/Ontology/vm/neovm/interfaces"
 )
 
@@ -32,4 +33,3 @@ type StackItems interface {
 	GetArray() []StackItems
 	GetStruct() []StackItems
 }
-

@@ -20,8 +20,9 @@ package types
 
 import (
 	"math/big"
-	"github.com/Ontology/vm/neovm/interfaces"
+
 	"github.com/Ontology/common"
+	"github.com/Ontology/vm/neovm/interfaces"
 )
 
 type Interop struct {
@@ -70,4 +71,3 @@ func (this *Interop) GetArray() []StackItems {
 func (this *Interop) GetStruct() []StackItems {
 	return []StackItems{this}
 }
-

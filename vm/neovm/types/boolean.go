@@ -20,6 +20,7 @@ package types
 
 import (
 	"math/big"
+
 	"github.com/Ontology/vm/neovm/interfaces"
 )
 
@@ -72,4 +73,3 @@ func (this *Boolean) GetArray() []StackItems {
 func (this *Boolean) GetStruct() []StackItems {
 	return []StackItems{this}
 }
-

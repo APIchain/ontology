@@ -22,6 +22,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io/ioutil"
+
 	"github.com/Ontology/common"
 	"github.com/Ontology/core/states"
 	"github.com/Ontology/core/store"
@@ -31,7 +33,6 @@ import (
 	"github.com/Ontology/vm/wasmvm/exec"
 	"github.com/Ontology/vm/wasmvm/util"
 	"github.com/Ontology/vm/wasmvm/wasm"
-	"io/ioutil"
 )
 
 type WasmStateMachine struct {
@@ -161,7 +162,6 @@ func (s *WasmStateMachine) deletestore(engine *exec.ExecutionEngine) (bool, erro
 }
 
 //call other contract
-//todo move to statemachine
 func callContract(engine *exec.ExecutionEngine) (bool, error) {
 	vm := engine.GetVM()
 	envCall := vm.GetEnvCall()

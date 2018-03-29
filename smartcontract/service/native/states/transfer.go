@@ -19,16 +19,17 @@
 package states
 
 import (
+	"io"
+	"math/big"
+
 	"github.com/Ontology/common"
 	"github.com/Ontology/common/serialization"
 	"github.com/Ontology/errors"
-	"io"
-	"math/big"
 )
 
 type Transfers struct {
 	Version byte
-	States   []*State
+	States  []*State
 }
 
 func (this *Transfers) Serialize(w io.Writer) error {
@@ -47,12 +48,14 @@ func (this *Transfers) Serialize(w io.Writer) error {
 }
 
 func (this *Transfers) Deserialize(r io.Reader) error {
-	version, err := serialization.ReadByte(r); if err != nil {
+	version, err := serialization.ReadByte(r)
+	if err != nil {
 		return errors.NewDetailErr(err, errors.ErrNoCode, "[TokenTransfer] Deserialize version error!")
 	}
 	this.Version = version
 
-	n, err := serialization.ReadVarUint(r, 0); if err != nil {
+	n, err := serialization.ReadVarUint(r, 0)
+	if err != nil {
 		return errors.NewDetailErr(err, errors.ErrNoCode, "[TokenTransfer] Deserialize states length error!")
 	}
 	for i := 0; uint64(i) < n; i++ {
@@ -67,9 +70,9 @@ func (this *Transfers) Deserialize(r io.Reader) error {
 
 type State struct {
 	Version byte
-	From  common.Address
-	To    common.Address
-	Value *big.Int
+	From    common.Address
+	To      common.Address
+	Value   *big.Int
 }
 
 func (this *State) Serialize(w io.Writer) error {
@@ -89,7 +92,8 @@ func (this *State) Serialize(w io.Writer) error {
 }
 
 func (this *State) Deserialize(r io.Reader) error {
-	version, err := serialization.ReadByte(r); if err != nil {
+	version, err := serialization.ReadByte(r)
+	if err != nil {
 		return errors.NewDetailErr(err, errors.ErrNoCode, "[State] Deserialize version error!")
 	}
 	this.Version = version

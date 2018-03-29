@@ -30,7 +30,7 @@ import (
 	"github.com/Ontology/core/genesis"
 	"github.com/Ontology/core/payload"
 	"github.com/Ontology/core/types"
-	onterr "github.com/Ontology/errors"
+	ontErrors "github.com/Ontology/errors"
 	bactor "github.com/Ontology/http/base/actor"
 	bcomn "github.com/Ontology/http/base/common"
 	berr "github.com/Ontology/http/base/error"
@@ -311,7 +311,7 @@ func SendRawTransaction(params []interface{}) map[string]interface{} {
 			}
 		}
 		hash = txn.Hash()
-		if errCode := bcomn.VerifyAndSendTx(&txn); errCode != onterr.ErrNoError {
+		if errCode := bcomn.VerifyAndSendTx(&txn); errCode != ontErrors.ErrNoError {
 			return responseSuccess(errCode.Error())
 		}
 	default:
@@ -550,7 +550,7 @@ func RegDataFile(params []interface{}) map[string]interface{} {
 		}
 
 		hash = txn.Hash()
-		if errCode := bcomn.VerifyAndSendTx(&txn); errCode != onterr.ErrNoError {
+		if errCode := bcomn.VerifyAndSendTx(&txn); errCode != ontErrors.ErrNoError {
 			return responsePack(berr.INTERNAL_ERROR, "internal error")
 		}
 	default:

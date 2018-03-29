@@ -20,14 +20,15 @@ package proc
 
 import (
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/Ontology/common"
 	"github.com/Ontology/common/log"
 	tx "github.com/Ontology/core/types"
 	"github.com/Ontology/errors"
 	tc "github.com/Ontology/txnpool/common"
 	"github.com/Ontology/validator/types"
-	"sync"
-	"time"
 )
 
 type pendingTx struct {
@@ -135,7 +136,6 @@ func (worker *txPoolWorker) handleTimeoutEvent() {
 				worker.reVerifyTx(k)
 				v.retries++
 			} else {
-				// Todo: Retry exhausted, remove it from pendingTxnList
 				log.Infof("Retry to verify transaction exhausted %x", k.ToArray())
 				worker.mu.Lock()
 				delete(worker.pendingTxList, k)
@@ -195,7 +195,6 @@ func (worker *txPoolWorker) verifyTx(tx *tx.Transaction) {
 }
 
 func (worker *txPoolWorker) reVerifyTx(txHash common.Uint256) {
-	// Todo: add retry logic
 	pt, ok := worker.pendingTxList[txHash]
 	if !ok {
 		return

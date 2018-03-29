@@ -19,41 +19,41 @@
 package states
 
 import (
-	"io"
 	"bytes"
+	"io"
+
+	"github.com/Ontology/common"
 	"github.com/Ontology/common/serialization"
 )
 
-type StorageItem struct {
-	StateBase
-	Value []byte
+type StorageKey struct {
+	CodeHash common.Address
+	Key      []byte
 }
 
-func (this *StorageItem) Serialize(w io.Writer) error {
-	this.StateBase.Serialize(w)
-	serialization.WriteVarBytes(w, this.Value)
-	return nil
+func (this *StorageKey) Serialize(w io.Writer) (int, error) {
+	this.CodeHash.Serialize(w)
+	serialization.WriteVarBytes(w, this.Key)
+	return 0, nil
 }
 
-func (this *StorageItem) Deserialize(r io.Reader) error {
-	if this == nil {
-		this = new(StorageItem)
-	}
-	err := this.StateBase.Deserialize(r)
+func (this *StorageKey) Deserialize(r io.Reader) error {
+	u := new(common.Address)
+	err := u.Deserialize(r)
 	if err != nil {
 		return err
 	}
-	value, err := serialization.ReadVarBytes(r)
+	this.CodeHash = *u
+	key, err := serialization.ReadVarBytes(r)
 	if err != nil {
 		return err
 	}
-	this.Value = value
+	this.Key = key
 	return nil
 }
 
-func (storageItem *StorageItem) ToArray() []byte {
+func (this *StorageKey) ToArray() []byte {
 	b := new(bytes.Buffer)
-	storageItem.Serialize(b)
+	this.Serialize(b)
 	return b.Bytes()
 }
-

@@ -19,8 +19,9 @@
 package neovm
 
 import (
-	"github.com/Ontology/vm/neovm/types"
 	"math/big"
+
+	"github.com/Ontology/vm/neovm/types"
 )
 
 func opArraySize(e *ExecutionEngine) (VMState, error) {
@@ -74,7 +75,7 @@ func opSetItem(e *ExecutionEngine) (VMState, error) {
 
 func opNewArray(e *ExecutionEngine) (VMState, error) {
 	count := PopBigInt(e)
-	items := NewStackItems();
+	items := NewStackItems()
 	for i := 0; count.Cmp(big.NewInt(int64(i))) > 0; i++ {
 		items = append(items, types.NewBoolean(false))
 	}
@@ -84,7 +85,7 @@ func opNewArray(e *ExecutionEngine) (VMState, error) {
 
 func opNewStruct(e *ExecutionEngine) (VMState, error) {
 	count := PopBigInt(e)
-	items := NewStackItems();
+	items := NewStackItems()
 	for i := 0; count.Cmp(big.NewInt(int64(i))) > 0; i++ {
 		items = append(items, types.NewBoolean(false))
 	}
@@ -104,9 +105,8 @@ func opAppend(e *ExecutionEngine) (VMState, error) {
 
 func opReverse(e *ExecutionEngine) (VMState, error) {
 	itemArr := PopArray(e)
-	for i, j := 0, len(itemArr) - 1; i < j; i, j = i + 1, j - 1 {
+	for i, j := 0, len(itemArr)-1; i < j; i, j = i+1, j-1 {
 		itemArr[i], itemArr[j] = itemArr[j], itemArr[i]
 	}
 	return NONE, nil
 }
-

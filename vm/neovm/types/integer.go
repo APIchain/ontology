@@ -19,8 +19,9 @@
 package types
 
 import (
-	"github.com/Ontology/vm/neovm/interfaces"
 	"math/big"
+
+	"github.com/Ontology/vm/neovm/interfaces"
 )
 
 type Integer struct {
@@ -69,4 +70,3 @@ func (this *Integer) GetArray() []StackItems {
 func (this *Integer) GetStruct() []StackItems {
 	return []StackItems{this}
 }
-
